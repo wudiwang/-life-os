@@ -1,25 +1,25 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { db } from '../lib/dataStore'
 import { useUIStore } from '../store/useUIStore'
 
 // 通用表数据 hook：加载 + 增删改，自动刷新与错误提示
+// opts 以 JSON 序列化做依赖，调用方可放心传字面量对象
 export function useTable(table, opts = {}) {
   const [rows, setRows] = useState([])
   const [loading, setLoading] = useState(true)
   const showToast = useUIStore(s => s.showToast)
-  const optsRef = useRef(opts)
-  optsRef.current = opts
+  const optsKey = JSON.stringify(opts)
 
   const reload = useCallback(async () => {
     try {
-      setRows(await db.list(table, optsRef.current))
+      setRows(await db.list(table, JSON.parse(optsKey)))
     } catch (e) {
       console.error(`加载 ${table} 失败`, e)
       showToast(`加载失败：${e.message}`, 'error')
     } finally {
       setLoading(false)
     }
-  }, [table, showToast])
+  }, [table, optsKey, showToast])
 
   useEffect(() => { reload() }, [reload])
 

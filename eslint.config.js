@@ -24,6 +24,8 @@ export default [
       ...js.configs.recommended.rules,
       ...reactHooks.configs.recommended.rules,
       'no-unused-vars': ['error', { varsIgnorePattern: '^[A-Z_]' }],
+      // 数据加载统一走 useTable 的 effect 异步 fetch，此规则误报
+      'react-hooks/set-state-in-effect': 'off',
     },
   },
 ]
