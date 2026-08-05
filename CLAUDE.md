@@ -44,6 +44,15 @@ git push origin main → Vercel 自动构建发布（约1-2分钟）
 
 - `api/ai-review.js`：POST {module, dataSummary, question?} → Claude API（model: claude-opus-4-8），返回 {content}。密钥读 `process.env.CLAUDE_API_KEY`。
 
+## AI 分析的两条路
+
+1. 在线：AIPage → /api/ai-review（需 Vercel 配 CLAUDE_API_KEY）；
+2. 本机：`npm run ai [模块] [问题]`（scripts/ai-review-local.mjs）——拉 Supabase 数据 → `claude -p`（本机 Claude Code 订阅）→ 写回 ai_reviews 表，网页/手机看历史。
+
+## 移动端
+
+`hooks/useIsMobile.js`（≤768px）；MainLayout 移动端为顶栏+抽屉导航（NavContent 与桌面侧栏共用）；宽表格用 `common/StatCard.jsx` 的 `ScrollX` 包裹横滑。
+
 ## 检查点（每次改动后）
 
 ```

@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react'
 import { useTable } from '../../hooks/useTable'
 import { COLORS, METRIC_TYPES } from '../../lib/constants'
-import { Card } from '../../components/common/StatCard'
+import { Card, ScrollX } from '../../components/common/StatCard'
 import { TrendChart } from '../../components/common/TrendChart'
 import { Modal, ModalActions } from '../../components/common/Modal'
 import { FormField, TextInput, TextArea, Select, Row } from '../../components/common/FormField'
@@ -88,6 +88,7 @@ function MetricsTab() {
         {typeRows.length === 0 ? (
           <EmptyState icon="🩺" text={`还没有${typeDef.label}记录，点击"记一笔"开始`} />
         ) : (
+          <ScrollX>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
             <thead>
               <tr style={{ color: COLORS.textLight, fontSize: 12, textAlign: 'left' }}>
@@ -110,6 +111,7 @@ function MetricsTab() {
               ))}
             </tbody>
           </table>
+          </ScrollX>
         )}
       </Card>
 

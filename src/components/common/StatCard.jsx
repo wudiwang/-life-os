@@ -16,6 +16,11 @@ export function StatCard({ icon, label, value, sub, color = COLORS.primary, onCl
   )
 }
 
+// 宽内容（表格等）横向滚动容器，避免撑破移动端布局
+export function ScrollX({ children }) {
+  return <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>{children}</div>
+}
+
 export function Card({ title, extra, children, style }) {
   return (
     <div style={{

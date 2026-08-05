@@ -34,7 +34,7 @@ export function AIPage() {
       })
       const contentType = resp.headers.get('content-type') || ''
       if (!contentType.includes('application/json')) {
-        throw new Error('AI 接口不可用。本地开发环境无 Serverless 支持，请部署到 Vercel 后使用（部署指南见项目文档）')
+        throw new Error('在线 AI 接口未配置。可在自己电脑上运行 npm run ai（走本机 Claude Code 订阅，结果会出现在下方历史里）')
       }
       const data = await resp.json()
       if (!resp.ok) throw new Error(data.error || 'AI 分析失败')
@@ -75,7 +75,8 @@ export function AIPage() {
           }}>{running ? '分析中…' : '开始分析'}</button>
         </div>
         <div style={{ fontSize: 12, color: COLORS.textLight, marginTop: 8 }}>
-          AI 会读取所选模块的近期数据（在你自己的服务端调用 Claude，密钥不经过前端）。
+          两种方式：① 此处在线分析（需 Vercel 配 CLAUDE_API_KEY）；② 电脑上运行 <code>npm run ai [模块] [问题]</code>，
+          走本机 Claude Code 订阅（不花 API 费），结果自动存入下方历史，手机也能看。
         </div>
       </Card>
 

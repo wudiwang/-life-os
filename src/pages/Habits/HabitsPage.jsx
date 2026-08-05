@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react'
 import { useTable } from '../../hooks/useTable'
 import { COLORS } from '../../lib/constants'
-import { Card } from '../../components/common/StatCard'
+import { Card, ScrollX } from '../../components/common/StatCard'
 import { Modal, ModalActions } from '../../components/common/Modal'
 import { FormField, TextInput, Select, Row } from '../../components/common/FormField'
 import { EmptyState, AddButton, IconBtn } from '../../components/common/EmptyState'
@@ -64,6 +64,7 @@ export function HabitsPage() {
         <Card><EmptyState icon="🌱" text='还没有习惯。从一个小习惯开始，比如"每天锻炼 20 分钟"' /></Card>
       ) : (
         <Card>
+          <ScrollX>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
             <thead>
               <tr style={{ color: COLORS.textLight, fontSize: 12 }}>
@@ -113,6 +114,7 @@ export function HabitsPage() {
               ))}
             </tbody>
           </table>
+          </ScrollX>
         </Card>
       )}
 
