@@ -9,8 +9,10 @@ import { FormField, TextInput, TextArea, Row } from '../../components/common/For
 import { EmptyState, AddButton, IconBtn } from '../../components/common/EmptyState'
 import { Badge } from '../../components/common/Badge'
 import { fmtDate } from '../../lib/date'
+import { uploadFile } from '../../lib/dataStore'
+import { useUIStore } from '../../store/useUIStore'
 
-const emptyNote = { title: '', category: '', tags: '', content: '', source: '' }
+const emptyNote = { title: '', category: '', tags: '', content: '', source: '', file_url: '' }
 
 export function KnowledgePage() {
   const { rows, add, patch, del } = useTable('knowledge_notes')
@@ -18,6 +20,8 @@ export function KnowledgePage() {
   const [catFilter, setCatFilter] = useState('all')
   const [modal, setModal] = useState(null)
   const [reading, setReading] = useState(null)
+  const [uploading, setUploading] = useState(false)
+  const showToast = useUIStore(s => s.showToast)
   const set = (k, v) => setModal(d => ({ ...d, [k]: v }))
 
   const categories = useMemo(
@@ -86,6 +90,13 @@ export function KnowledgePage() {
           <div style={{ fontSize: 14, lineHeight: 1.8 }} className="md-body">
             <ReactMarkdown remarkPlugins={[remarkGfm]}>{reading.content || ''}</ReactMarkdown>
           </div>
+          {reading.file_url && (
+            <div style={{ marginTop: 14 }}>
+              <a href={reading.file_url} target="_blank" rel="noreferrer" style={{ fontSize: 13, color: COLORS.primary }}>
+                📎 打开附件（原始文档）
+              </a>
+            </div>
+          )}
           {reading.source && (
             <div style={{ marginTop: 14, fontSize: 13, color: COLORS.textLight }}>来源：{reading.source}</div>
           )}
@@ -111,7 +122,24 @@ export function KnowledgePage() {
           <FormField label="来源">
             <TextInput value={modal.source} onChange={v => set('source', v)} placeholder="链接 / 书名 / 出处" />
           </FormField>
-          <ModalActions onCancel={() => setModal(null)} disabled={!modal.title || !modal.content}
+          <FormField label="附件（文档/模板/图片）"
+            hint={modal.file_url ? '已有附件，重新选择将替换' : '如需求文档、模板文件；正文里写清"这是什么、何时用"'}>
+            <input type="file" onChange={async e => {
+              const f = e.target.files?.[0]
+              if (!f) return
+              setUploading(true)
+              try {
+                set('file_url', await uploadFile(f))
+                showToast('附件已就绪')
+              } catch (err) {
+                showToast(err.message, 'error')
+              } finally {
+                setUploading(false)
+              }
+            }} />
+          </FormField>
+          <ModalActions onCancel={() => setModal(null)} disabled={!modal.title || !modal.content || uploading}
+            submitText={uploading ? '上传中…' : '保存'}
             onSubmit={async () => {
               const { id, created_at: _ca, updated_at: _ua, ...data } = modal
               if (id) await patch(id, { ...data, updated_at: new Date().toISOString() })
