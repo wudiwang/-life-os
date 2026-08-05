@@ -8,7 +8,8 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "ai": "node scripts/ai-review-local.mjs"
+    "ai": "node scripts/ai-review-local.mjs",
+    "bot": "node scripts/tg-bot.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.103.0",
