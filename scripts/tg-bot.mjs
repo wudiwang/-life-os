@@ -5,9 +5,10 @@
 // 会话延续：每个 chat 的 Claude session id 存在 scripts/.tg-session.json；TG 里发 /new 可开启新会话。
 
 import { readFileSync, writeFileSync, existsSync } from 'node:fs'
-import { spawnSync } from 'node:child_process'
+import { spawnSync, spawn } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
+import { buildRefinePrompt, parseRefineResult } from './refine-prompt.mjs'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const SESSION_FILE = join(root, 'scripts', '.tg-session.json')
@@ -140,6 +141,108 @@ async function handleMessage(msg) {
   await reply(chatId, answer)
 }
 
+// ── 本机 AI worker：网页/手机把快记原文丢进 ai_jobs，这里取走跑 claude -p，结果写回 ──
+// 走订阅额度，不花 API 钱；不需要内网穿透，手机在外网也能用。前提：本机开着且这个进程在跑。
+const SB = env.VITE_SUPABASE_URL
+const SB_KEY = env.VITE_SUPABASE_ANON_KEY
+const sbHeaders = { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`, 'Content-Type': 'application/json' }
+
+async function sb(path, init = {}) {
+  const resp = await fetch(`${SB}/rest/v1/${path}`, { ...init, headers: { ...sbHeaders, ...(init.headers || {}) } })
+  const body = await resp.text()
+  if (!resp.ok) throw new Error(`${resp.status} ${body.slice(0, 200)}`)
+  return body ? JSON.parse(body) : null
+}
+
+// 异步跑 claude（不用 spawnSync，避免卡住 TG 长轮询）
+function claudeAsync(prompt, timeoutMs = 300000) {
+  return new Promise((resolve, reject) => {
+    const p = spawn('claude -p', { shell: true, cwd: root })
+    let out = ''
+    let err = ''
+    const timer = setTimeout(() => { p.kill(); reject(new Error('claude 超时')) }, timeoutMs)
+    p.stdout.on('data', d => { out += d })
+    p.stderr.on('data', d => { err += d })
+    p.on('error', e => { clearTimeout(timer); reject(e) })
+    p.on('close', code => {
+      clearTimeout(timer)
+      if (code !== 0 || !out.trim()) reject(new Error(err.trim().slice(0, 300) || `exit ${code}`))
+      else resolve(out)
+    })
+    p.stdin.end(prompt)
+  })
+}
+
+const patchJob = (id, data) =>
+  sb(`ai_jobs?id=eq.${id}`, { method: 'PATCH', body: JSON.stringify(data) })
+
+const healthPrompt = (data, ask) => `你是昊天的私人健康顾问，服务于他的「人生 OS」个人管理系统。
+他最关心的是**体脂率**和**身体年龄**——不是体重数字本身。他现在体脂偏高、内脏脂肪等级偏高，目标是减脂增肌。
+
+基于下面的体成分数据：
+1. 先说结论：这段时间他到底在变好还是变差，哪几个指标是关键证据（引用具体数值和变化量）；
+2. **饮食**：给到具体的每日热量区间、蛋白质克数、以及 2-3 条可执行的吃法调整（不要"少油少盐"这种废话）；
+3. **睡眠**：结合基础代谢和减脂目标说该怎么睡，几点睡、睡多久，为什么；
+4. **行动计划**：未来 4 周，每周做什么，怎么衡量做到了没有。写成能直接抄进待办的样子；
+5. 如果数据不足以下判断，直接说缺什么数据、建议他去测什么。
+
+要求：中文，简洁分段，说人话，直接给结论和动作，不要开场白和免责套话。
+你不是医生——涉及指标异常，建议就医而非诊断。
+
+【体成分数据】
+${data}
+${ask ? `\n【他的问题】${ask}` : ''}`
+
+async function runJob(job) {
+  const kind = job.kind || 'refine_note'
+  console.log(`🧪 任务 ${job.id.slice(0, 8)} [${kind}]：${job.input.slice(0, 40).replace(/\n/g, ' ')}...`)
+  await patchJob(job.id, { status: 'running', started_at: new Date().toISOString() })
+  try {
+    if (kind === 'health_advice') {
+      const content = (await claudeAsync(healthPrompt(job.input, job.context))).trim()
+      // 健康建议直接进 ai_reviews，网页/手机的「健康 → 体成分」和「AI 分析」都能看到
+      await sb('ai_reviews', {
+        method: 'POST',
+        body: JSON.stringify({ module: 'health', prompt_summary: job.context || '体成分分析（本机 Claude）', content }),
+      })
+      await patchJob(job.id, { status: 'done', error: null, finished_at: new Date().toISOString() })
+      console.log(`💪 健康建议已生成（${content.length} 字）`)
+      return
+    }
+
+    const result = parseRefineResult(await claudeAsync(buildRefinePrompt(job.input, job.context)))
+    await patchJob(job.id, { status: 'done', result, error: null, finished_at: new Date().toISOString() })
+    console.log(`✨ 提炼完成：${result.comment || '(无说明)'}（知识 ${result.knowledge.length} 条 / 待办 ${result.todos.length} 条）`)
+  } catch (e) {
+    await patchJob(job.id, { status: 'error', error: String(e.message).slice(0, 500), finished_at: new Date().toISOString() })
+    console.error(`❌ 任务失败 ${job.id.slice(0, 8)}：`, e.message)
+  }
+}
+
+async function workerLoop() {
+  if (!SB || !SB_KEY) {
+    console.log('⚠️ .env 缺 Supabase 密钥，AI 提炼 worker 未启动')
+    return
+  }
+  console.log('⚙️ AI 提炼 worker 已启动（轮询 ai_jobs，走本机 Claude 订阅）')
+  let quiet = 0 // 建表前会一直报错，降噪：连续失败时拉长间隔、少刷屏
+  for (;;) {
+    let wait = 3000
+    try {
+      const jobs = await sb('ai_jobs?select=*&status=eq.pending&order=created_at.asc&limit=1')
+      quiet = 0
+      if (jobs?.length) {
+        await runJob(jobs[0])
+        continue
+      }
+    } catch (e) {
+      if (quiet++ % 20 === 0) console.error('worker 轮询出错（是否还没执行 supabase/v4_ai_jobs.sql？）：', e.message)
+      wait = 15000
+    }
+    await new Promise(r => setTimeout(r, wait))
+  }
+}
+
 // ── 主循环：长轮询 ──
 // 本机到 TG 的网络偶发抖动，启动调用带重试
 async function tgRetry(method, params, tries = 8) {
@@ -162,6 +265,9 @@ if (!me.ok) {
   process.exit(1)
 }
 console.log(`✅ @${me.result.username} 已上线，等待消息中（Ctrl+C 停止）`)
+
+// 与 TG 长轮询并行跑，不 await
+workerLoop()
 
 let offset = 0
 for (;;) {

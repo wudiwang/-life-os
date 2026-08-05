@@ -10,29 +10,38 @@ import { Badge } from '../../components/common/Badge'
 import { fmtDate, fmtDateTime, todayStr } from '../../lib/date'
 import { uploadFile } from '../../lib/dataStore'
 import { useUIStore } from '../../store/useUIStore'
+import { BodyTab } from './BodyTab'
+import { BloodTab } from './BloodTab'
 
 const emptyMetric = { metric_type: 'weight', metric_name: '', value_num: '', value2_num: '', note: '', measured_date: todayStr() }
 const emptyReport = { title: '', org: '', report_date: todayStr(), summary: '', file_url: '' }
 
 export function HealthPage() {
-  const [tab, setTab] = useState('metrics')
+  const [tab, setTab] = useState('body')
   const tabs = [
+    { key: 'body', label: '🧬 体成分' },
+    { key: 'blood', label: '🩸 血液检查' },
     { key: 'metrics', label: '📈 指标记录' },
     { key: 'reports', label: '📋 体检报告' },
   ]
   return (
     <div>
-      <div style={{ display: 'flex', gap: 8, marginBottom: 18 }}>
-        {tabs.map(t => (
-          <button key={t.key} onClick={() => setTab(t.key)} style={{
-            padding: '8px 18px', borderRadius: 8, fontSize: 14,
-            border: `1px solid ${tab === t.key ? COLORS.primary : COLORS.border}`,
-            background: tab === t.key ? COLORS.primary : '#fff',
-            color: tab === t.key ? '#fff' : COLORS.text, fontWeight: tab === t.key ? 600 : 400,
-          }}>{t.label}</button>
-        ))}
-      </div>
-      {tab === 'metrics' ? <MetricsTab /> : <ReportsTab />}
+      <ScrollX>
+        <div style={{ display: 'flex', gap: 8, marginBottom: 18 }}>
+          {tabs.map(t => (
+            <button key={t.key} onClick={() => setTab(t.key)} style={{
+              padding: '8px 18px', borderRadius: 8, fontSize: 14, whiteSpace: 'nowrap',
+              border: `1px solid ${tab === t.key ? COLORS.primary : COLORS.border}`,
+              background: tab === t.key ? COLORS.primary : '#fff',
+              color: tab === t.key ? '#fff' : COLORS.text, fontWeight: tab === t.key ? 600 : 400,
+            }}>{t.label}</button>
+          ))}
+        </div>
+      </ScrollX>
+      {tab === 'body' && <BodyTab />}
+      {tab === 'blood' && <BloodTab />}
+      {tab === 'metrics' && <MetricsTab />}
+      {tab === 'reports' && <ReportsTab />}
     </div>
   )
 }

@@ -45,6 +45,43 @@ export const METRIC_TYPES = [
   { key: 'custom', label: '自定义', unit: '', dual: false },
 ]
 
+// 体成分（InBody）指标定义。key 优先匹配 metric_type，其次匹配 custom 的 metric_name。
+// good: 'down' 表示数值降低是好事，'up' 反之——用于对比表的涨跌配色。
+export const BODY_METRICS = [
+  { key: 'body_fat', name: '体脂率', unit: '%', good: 'down', ref: '成年男性 15–20%', core: true },
+  { key: '内脏脂肪等级', name: '内脏脂肪等级', unit: 'Lv', good: 'down', ref: '≤ 9', core: true },
+  { key: '肌肉量', name: '肌肉量', unit: 'kg', good: 'up', core: true },
+  { key: 'weight', name: '体重', unit: 'kg', good: 'down', core: true },
+  { key: '脂肪量', name: '脂肪量', unit: 'kg', good: 'down' },
+  { key: 'BMI', name: 'BMI', unit: '', good: 'down', ref: '18.5–24' },
+  { key: '腰臀比', name: '腰臀比', unit: '', good: 'down', ref: '男性 ≤ 0.90' },
+  { key: '身体年龄', name: '身体年龄', unit: '岁', good: 'down', ref: '低于实际年龄为佳' },
+  { key: '基础代谢', name: '基础代谢', unit: 'kcal', good: 'up' },
+  { key: 'InBody评分', name: 'InBody 评分', unit: '分', good: 'up', ref: '80 分以上为佳' },
+]
+
+// 血液检查组套。参考区间为常见成年男性范围，仅作提示——一切以报告单标注为准。
+export const BLOOD_PANEL = [
+  { group: '血脂', key: 'TC', name: '总胆固醇', unit: 'mmol/L', low: 2.8, high: 5.2 },
+  { group: '血脂', key: 'TG', name: '甘油三酯', unit: 'mmol/L', low: 0.4, high: 1.7 },
+  { group: '血脂', key: 'HDL', name: '高密度脂蛋白', unit: 'mmol/L', low: 1.0, high: 2.0, good: 'up' },
+  { group: '血脂', key: 'LDL', name: '低密度脂蛋白', unit: 'mmol/L', low: 0, high: 3.4 },
+  { group: '血糖', key: 'GLU', name: '空腹血糖', unit: 'mmol/L', low: 3.9, high: 6.1 },
+  { group: '血糖', key: 'HBA1C', name: '糖化血红蛋白', unit: '%', low: 4.0, high: 6.0 },
+  { group: '肝功能', key: 'ALT', name: '谷丙转氨酶 ALT', unit: 'U/L', low: 9, high: 50 },
+  { group: '肝功能', key: 'AST', name: '谷草转氨酶 AST', unit: 'U/L', low: 15, high: 40 },
+  { group: '肝功能', key: 'GGT', name: '谷氨酰转肽酶 GGT', unit: 'U/L', low: 10, high: 60 },
+  { group: '肝功能', key: 'TBIL', name: '总胆红素', unit: 'μmol/L', low: 3.4, high: 20.5 },
+  { group: '肾功能', key: 'UA', name: '尿酸', unit: 'μmol/L', low: 208, high: 428 },
+  { group: '肾功能', key: 'CR', name: '肌酐', unit: 'μmol/L', low: 57, high: 111 },
+  { group: '肾功能', key: 'BUN', name: '尿素氮', unit: 'mmol/L', low: 3.1, high: 8.0 },
+  { group: '血常规', key: 'WBC', name: '白细胞', unit: '10⁹/L', low: 3.5, high: 9.5 },
+  { group: '血常规', key: 'HGB', name: '血红蛋白', unit: 'g/L', low: 130, high: 175 },
+  { group: '血常规', key: 'PLT', name: '血小板', unit: '10⁹/L', low: 125, high: 350 },
+  { group: '其他', key: 'TSH', name: '促甲状腺激素', unit: 'mIU/L', low: 0.27, high: 4.2 },
+  { group: '其他', key: 'HCY', name: '同型半胱氨酸', unit: 'μmol/L', low: 0, high: 15 },
+]
+
 export const GOAL_LEVELS = [
   { key: 'year', label: '年度', color: COLORS.purple },
   { key: 'quarter', label: '季度', color: COLORS.teal },
@@ -102,4 +139,5 @@ export const ALL_TABLES = [
   'explore_records', 'knowledge_notes',
   'relation_people', 'relation_logs',
   'journal_entries', 'ai_reviews', 'life_stage',
+  'ai_jobs', 'blood_metrics',
 ]

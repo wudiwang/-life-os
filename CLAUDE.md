@@ -22,8 +22,8 @@ git push origin main → Vercel 自动构建发布（约1-2分钟）
 | 页面 | 文件 | 说明 |
 |---|---|---|
 | 人生看板 | Dashboard/DashboardPage | 今日概览 + 人生阶段面板(life_stage 表) + 检查点提醒 |
-| 每日一记 | Journal/JournalPage | 心情(1-5)+文字+感恩，心情曲线 |
-| 健康 | Health/HealthPage | 指标(tabs) + 体检报告；指标类型定义在 constants.METRIC_TYPES |
+| 每日一记 | Journal/JournalPage | 快记(AI 提炼后确认入库) + 心情(1-5) + 感恩，心情曲线 |
+| 健康 | Health/HealthPage | 4 tabs：体成分(BodyTab)/血液检查(BloodTab)/指标记录/体检报告；指标定义在 constants 的 METRIC_TYPES、BODY_METRICS、BLOOD_PANEL |
 | 习惯 | Habits/HabitsPage | 7天打卡网格 + streak；habit_logs 以 (habit_id, log_date) 判打卡 |
 | 目标 | Goals/GoalsPage | 目标卡片 + 详情弹窗(里程碑/检查点自检/过程记录/复盘) |
 | 工作 | Work/WorkPage | 4 tabs：待办/日志/职责档案(work_profile.field)/人际地图 |
@@ -45,10 +45,16 @@ git push origin main → Vercel 自动构建发布（约1-2分钟）
 
 - `api/ai-review.js`：POST {module, dataSummary, question?} → Claude API（model: claude-opus-4-8），返回 {content}。密钥读 `process.env.CLAUDE_API_KEY`。
 
-## AI 分析的两条路
+## AI 的三条路（IMPORTANT：网页/手机的 AI 一律走本机订阅，不走 API 计费）
 
-1. 在线：AIPage → /api/ai-review（需 Vercel 配 CLAUDE_API_KEY）；
-2. 本机：`npm run ai [模块] [问题]`（scripts/ai-review-local.mjs）——拉 Supabase 数据 → `claude -p`（本机 Claude Code 订阅）→ 写回 ai_reviews 表，网页/手机看历史。
+1. **队列（主路）**：网页/手机 → `ai_jobs` 表（status=pending）→ 本机 `npm run bot` 里的 worker 轮询取走 → `claude -p`（订阅额度）→ 结果写回 → 前端轮询拿到。
+   - 不需要内网穿透/公网 IP，手机在外网也能用；**前提是本机开着且 bot 在跑**，否则任务只是排队。
+   - `kind` 区分活儿：`refine_note`（快记提炼，结果进 `ai_jobs.result` 等用户确认）、`health_advice`（体成分建议，直接写 `ai_reviews`）。新增 kind 在 `scripts/tg-bot.mjs` 的 `runJob` 里加分支。
+   - 提示词与结果解析：`scripts/refine-prompt.mjs`。
+2. 命令行：`npm run ai [模块] [问题]`（scripts/ai-review-local.mjs）——同样走本机订阅，写回 ai_reviews。
+3. 在线（备用，默认没配）：AIPage → /api/ai-review，需 Vercel 配 CLAUDE_API_KEY。
+
+**快记链路**：输入 → 原话立即写 `journal_entries.raw_input`（保底不丢）→ 建 ai_jobs → 提炼回来弹确认卡片 → 用户勾选后：整理后正文进 `content`、知识资产进 `knowledge_notes`、待办进 `work_todos`。本机不在线就降级为原样存。
 
 ## 移动端
 
