@@ -83,6 +83,7 @@ relation_people(name,rel_type:family/friend/love,birthday,closeness) + relation_
 function askClaude(chatId, userText) {
   const sid = sessions[chatId]
   const args = ['-p', '--output-format', 'json',
+    '--model', 'opus',  // 大脑锁定最新 Opus（当前 4.8），思考档位走 CC 默认 xhigh
     '--allowedTools', '"Bash(node scripts/db.mjs:*)"', '"Read"', '"Grep"', '"Glob"', '"WebFetch"', '"WebSearch"']
   if (sid) args.push('--resume', sid)
   const today = new Date().toLocaleDateString('sv-SE')
