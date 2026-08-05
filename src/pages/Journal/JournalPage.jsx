@@ -11,9 +11,24 @@ import { todayStr } from '../../lib/date'
 export function JournalPage() {
   const { rows, add, patch, del } = useTable('journal_entries', { orderBy: 'entry_date', ascending: false })
   const [modal, setModal] = useState(null)
+  const [quick, setQuick] = useState('')
   const set = (k, v) => setModal(d => ({ ...d, [k]: v }))
 
   const todayEntry = rows.find(r => r.entry_date === todayStr())
+
+  // 随手记：带时间戳追加到今天的记录，一天可记多笔
+  const quickAdd = async () => {
+    const text = quick.trim()
+    if (!text) return
+    const stamp = new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false })
+    const line = `[${stamp}] ${text}`
+    if (todayEntry) {
+      await patch(todayEntry.id, { content: (todayEntry.content ? todayEntry.content + '\n' : '') + line })
+    } else {
+      await add({ entry_date: todayStr(), mood: null, content: line, gratitude: '' })
+    }
+    setQuick('')
+  }
 
   const moodData = useMemo(
     () => [...rows].reverse().slice(-30)
@@ -30,20 +45,37 @@ export function JournalPage() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      {/* 今日入口 */}
+      {/* 随手记：常驻快速入口 */}
+      <Card>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <input value={quick} onChange={e => setQuick(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && quickAdd()}
+            placeholder="✍️ 随手记一笔（自动带时间戳追加到今天），回车提交"
+            style={{ flex: 1, padding: '10px 14px', borderRadius: 8, border: `1px solid ${COLORS.border}`, fontSize: 14, outline: 'none' }} />
+          <button onClick={quickAdd} style={{
+            padding: '10px 18px', borderRadius: 8, border: 'none',
+            background: COLORS.primary, color: '#fff', fontSize: 14, fontWeight: 600, whiteSpace: 'nowrap',
+          }}>记下</button>
+        </div>
+      </Card>
+
+      {/* 今日状态 */}
       <Card>
         {todayEntry ? (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <span style={{ fontSize: 28 }}>{MOODS.find(m => m.value === todayEntry.mood)?.icon || '🙂'}</span>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 2 }}>今天已记录 ✓</div>
-              <div style={{ fontSize: 13, color: COLORS.textLight, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 500 }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+            <span style={{ fontSize: 28 }}>{MOODS.find(m => m.value === todayEntry.mood)?.icon || '📝'}</span>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>
+                今天已记 {String(todayEntry.content || '').split('\n').filter(Boolean).length} 笔
+                {!todayEntry.mood && <span style={{ fontWeight: 400, color: COLORS.textLight, fontSize: 12 }}>（心情还没打分）</span>}
+              </div>
+              <div style={{ fontSize: 13, color: COLORS.textLight, whiteSpace: 'pre-wrap', maxHeight: 120, overflowY: 'auto' }}>
                 {todayEntry.content}
               </div>
             </div>
             <button onClick={() => openEditor(todayEntry)} style={{
-              padding: '8px 16px', borderRadius: 8, border: `1px solid ${COLORS.border}`, background: '#fff', fontSize: 13,
-            }}>补充</button>
+              padding: '8px 16px', borderRadius: 8, border: `1px solid ${COLORS.border}`, background: '#fff', fontSize: 13, whiteSpace: 'nowrap',
+            }}>心情/整理</button>
           </div>
         ) : (
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
