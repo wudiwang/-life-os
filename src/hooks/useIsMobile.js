@@ -7,9 +7,14 @@ export function useIsMobile() {
 
   useEffect(() => {
     const mql = window.matchMedia(QUERY)
-    const onChange = e => setIsMobile(e.matches)
-    mql.addEventListener('change', onChange)
-    return () => mql.removeEventListener('change', onChange)
+    const sync = () => setIsMobile(window.matchMedia(QUERY).matches)
+    // matchMedia change 为主，window resize 兜底（部分内嵌/模拟环境不派发前者）
+    mql.addEventListener('change', sync)
+    window.addEventListener('resize', sync)
+    return () => {
+      mql.removeEventListener('change', sync)
+      window.removeEventListener('resize', sync)
+    }
   }, [])
 
   return isMobile

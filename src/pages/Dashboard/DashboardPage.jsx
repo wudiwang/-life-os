@@ -14,6 +14,10 @@ const STAGE_FIELDS = [
   { key: 'advice', label: '方向建议', icon: '🧭', hint: '大方向上的提醒（可让 AI 分析后填入）' },
 ]
 
+// 核心原则：首页最显眼位置，一进来就看到
+const PRINCIPLE_FIELD = { key: 'principle', label: '核心原则', icon: '⚡', hint: '一进系统就要看到的人生准则' }
+const ALL_STAGE_FIELDS = [PRINCIPLE_FIELD, ...STAGE_FIELDS]
+
 export function DashboardPage() {
   const setPage = useUIStore(s => s.setPage)
   const { rows: todos } = useTable('work_todos')
@@ -44,8 +48,24 @@ export function DashboardPage() {
 
   const stageOf = f => stageRows.find(r => r.field === f)
 
+  const principle = stageOf('principle')
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      {/* 核心原则横幅 */}
+      <div
+        onClick={() => setEditing({ field: 'principle', content: principle?.content || '', id: principle?.id })}
+        style={{
+          background: 'linear-gradient(135deg, #1E3A8A, #3B82F6)', color: '#fff',
+          borderRadius: 12, padding: '16px 20px', cursor: 'pointer',
+        }}
+      >
+        <div style={{ fontSize: 12, opacity: 0.85, marginBottom: 6 }}>⚡ 核心原则</div>
+        <div style={{ fontSize: 16, fontWeight: 700, lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
+          {principle?.content || '点击写下你的核心原则，让它每天第一眼提醒你'}
+        </div>
+      </div>
+
       {/* 今日概览 */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 12 }}>
         <StatCard icon="📔" label="今日一记" value={todayJournal ? (MOODS.find(m => m.value === todayJournal.mood)?.icon || '✓') : '未写'}
@@ -145,10 +165,10 @@ export function DashboardPage() {
       )}
 
       {editing && (
-        <Modal title={`${STAGE_FIELDS.find(f => f.key === editing.field)?.icon} ${STAGE_FIELDS.find(f => f.key === editing.field)?.label}`}
+        <Modal title={`${ALL_STAGE_FIELDS.find(f => f.key === editing.field)?.icon} ${ALL_STAGE_FIELDS.find(f => f.key === editing.field)?.label}`}
           onClose={() => setEditing(null)}>
           <TextArea value={editing.content} onChange={v => setEditing(d => ({ ...d, content: v }))} rows={6}
-            placeholder={STAGE_FIELDS.find(f => f.key === editing.field)?.hint} />
+            placeholder={ALL_STAGE_FIELDS.find(f => f.key === editing.field)?.hint} />
           <ModalActions onCancel={() => setEditing(null)}
             onSubmit={async () => {
               if (editing.id) await patchStage(editing.id, { content: editing.content })

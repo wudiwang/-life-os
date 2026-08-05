@@ -4,6 +4,20 @@ import { PAGE_TITLES, COLORS } from '../../lib/constants'
 import { useUIStore } from '../../store/useUIStore'
 import { useIsMobile } from '../../hooks/useIsMobile'
 
+// 全局快记入口：任意页面右下角浮动按钮，一键进入每日一记（PC/H5 同步）
+function QuickJournalFab() {
+  const { currentPage, setPage } = useUIStore()
+  if (currentPage === 'journal') return null
+  return (
+    <button onClick={() => setPage('journal')} title="快速记一笔" aria-label="快速记一笔" style={{
+      position: 'fixed', right: 20, bottom: 24, zIndex: 60,
+      width: 52, height: 52, borderRadius: '50%', border: 'none',
+      background: COLORS.primary, color: '#fff', fontSize: 22,
+      boxShadow: '0 6px 16px rgba(59,130,246,0.45)',
+    }}>✍️</button>
+  )
+}
+
 function Toast() {
   const toast = useUIStore(s => s.toast)
   if (!toast) return null
@@ -55,6 +69,7 @@ export function MainLayout({ children }) {
         <div style={{ flex: 1, padding: 12, width: '100%' }}>
           {children}
         </div>
+        <QuickJournalFab />
         <Toast />
       </div>
     )
@@ -74,6 +89,7 @@ export function MainLayout({ children }) {
           {children}
         </div>
       </div>
+      <QuickJournalFab />
       <Toast />
     </div>
   )
