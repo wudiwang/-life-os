@@ -176,6 +176,17 @@ function claudeAsync(prompt, timeoutMs = 300000) {
 const patchJob = (id, data) =>
   sb(`ai_jobs?id=eq.${id}`, { method: 'PATCH', body: JSON.stringify(data) })
 
+// 原子占坑：带 status=eq.pending 过滤更新，只有把它从 pending 改成 running 的那个实例算抢到。
+// 万一同时跑了多份 bot（或将来多机），不会重复调 claude、重复写结果。
+async function claimJob(id) {
+  const rows = await sb(`ai_jobs?id=eq.${id}&status=eq.pending`, {
+    method: 'PATCH',
+    headers: { Prefer: 'return=representation' },
+    body: JSON.stringify({ status: 'running', started_at: new Date().toISOString() }),
+  })
+  return Array.isArray(rows) && rows.length > 0
+}
+
 const healthPrompt = (data, ask) => `你是昊天的私人健康顾问，服务于他的「人生 OS」个人管理系统。
 他最关心的是**体脂率**和**身体年龄**——不是体重数字本身。他现在体脂偏高、内脏脂肪等级偏高，目标是减脂增肌。
 
@@ -195,8 +206,8 @@ ${ask ? `\n【他的问题】${ask}` : ''}`
 
 async function runJob(job) {
   const kind = job.kind || 'refine_note'
+  if (!await claimJob(job.id)) return // 被别的实例抢先了，跳过
   console.log(`🧪 任务 ${job.id.slice(0, 8)} [${kind}]：${job.input.slice(0, 40).replace(/\n/g, ' ')}...`)
-  await patchJob(job.id, { status: 'running', started_at: new Date().toISOString() })
   try {
     if (kind === 'health_advice') {
       const content = (await claudeAsync(healthPrompt(job.input, job.context))).trim()
