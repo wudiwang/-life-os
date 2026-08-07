@@ -21,7 +21,7 @@ git push origin main → Vercel 自动构建发布（约1-2分钟）
 
 | 页面 | 文件 | 说明 |
 |---|---|---|
-| 人生看板 | Dashboard/DashboardPage | 今日概览 + 人生阶段面板(life_stage 表) + 检查点提醒 |
+| 人生看板 | Dashboard/DashboardPage | 核心原则 + **每日三向**(DailyFocusCard，daily_focus 表) + 今日概览 + 人生阶段面板(life_stage 表) + 检查点提醒 |
 | 每日一记 | Journal/JournalPage | 快记(AI 提炼后确认入库) + 心情(1-5) + 感恩，心情曲线 |
 | 健康 | Health/HealthPage | 4 tabs：体成分(BodyTab)/血液检查(BloodTab)/指标记录/体检报告；指标定义在 constants 的 METRIC_TYPES、BODY_METRICS、BLOOD_PANEL |
 | 习惯 | Habits/HabitsPage | 7天打卡网格 + streak；habit_logs 以 (habit_id, log_date) 判打卡 |

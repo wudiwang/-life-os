@@ -123,6 +123,38 @@ export const REL_TYPES = [
   { key: 'love', label: '爱情', icon: '💗', color: COLORS.pink },
 ]
 
+// 每日三向：每天必须投入思考的固定方向，看板首屏打卡（表 daily_focus）
+// prompts 是打卡弹窗里的自问清单——方向固定，问题才不会每天重新想。
+export const FOCUS_TRACKS = [
+  {
+    key: 'work', label: '工作 · 职责边界', short: '工作', icon: '💼', color: COLORS.primary,
+    hint: '今天我的边界在哪？该我扛的扛了吗，不该我接的接了吗？',
+    prompts: [
+      '边界：今天有没有越界，或者被别人越界？',
+      '产出：我这个位置今天真正推动了什么？',
+      '取舍：明天该放掉哪件不属于我的事？',
+    ],
+  },
+  {
+    key: 'trade', label: '交易', short: '交易', icon: '📈', color: COLORS.orange,
+    hint: '今天怎么看市场？做了什么决策，纪律守住了吗？',
+    prompts: [
+      '判断：现在的仓位背后是什么逻辑？还成立吗？',
+      '纪律：今天有没有情绪化的动作（追高、扛单、乱加仓）？',
+      '复盘：今天最该记住的一条教训是什么？',
+    ],
+  },
+  {
+    key: 'life', label: '生活健康', short: '生活', icon: '🌱', color: COLORS.green,
+    hint: '健身、饮食、人际关系——今天做到了什么？',
+    prompts: [
+      '身体：练了吗？吃得怎么样？睡够了吗？',
+      '关系：今天和谁的连接变深了，或者欠了谁一个回应？',
+      '状态：今天的精力是被什么消耗掉的？',
+    ],
+  },
+]
+
 export const MOODS = [
   { value: 1, icon: '😞', label: '很差' },
   { value: 2, icon: '😕', label: '不佳' },
@@ -139,5 +171,5 @@ export const ALL_TABLES = [
   'explore_records', 'knowledge_notes',
   'relation_people', 'relation_logs',
   'journal_entries', 'ai_reviews', 'life_stage',
-  'ai_jobs', 'blood_metrics',
+  'ai_jobs', 'blood_metrics', 'daily_focus',
 ]

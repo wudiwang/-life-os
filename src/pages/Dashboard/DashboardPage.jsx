@@ -7,6 +7,7 @@ import { TextArea } from '../../components/common/FormField'
 import { Badge } from '../../components/common/Badge'
 import { todayStr, fmtDate, daysBetween } from '../../lib/date'
 import { useUIStore } from '../../store/useUIStore'
+import { DailyFocusCard } from './DailyFocusCard'
 
 const STAGE_FIELDS = [
   { key: 'stage', label: '阶段定位', icon: '📍', hint: '我现在处于人生哪个阶段？（年龄、身份、核心矛盾）' },
@@ -65,6 +66,9 @@ export function DashboardPage() {
           {principle?.content || '点击写下你的核心原则，让它每天第一眼提醒你'}
         </div>
       </div>
+
+      {/* 每日三向：固定思考方向打卡，紧跟核心原则占住第一屏 */}
+      <DailyFocusCard />
 
       {/* 今日概览 */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 12 }}>
