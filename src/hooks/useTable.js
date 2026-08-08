@@ -4,6 +4,7 @@ import { useUIStore } from '../store/useUIStore'
 
 // 通用表数据 hook：加载 + 增删改，自动刷新与错误提示
 // opts 以 JSON 序列化做依赖，调用方可放心传字面量对象
+// opts.optional：表可能还没建（新版 SQL 未执行）时静默降级为空，不弹错误提示
 export function useTable(table, opts = {}) {
   const [rows, setRows] = useState([])
   const [loading, setLoading] = useState(true)
@@ -11,11 +12,13 @@ export function useTable(table, opts = {}) {
   const optsKey = JSON.stringify(opts)
 
   const reload = useCallback(async () => {
+    const { optional, ...listOpts } = JSON.parse(optsKey)
     try {
-      setRows(await db.list(table, JSON.parse(optsKey)))
+      setRows(await db.list(table, listOpts))
     } catch (e) {
       console.error(`加载 ${table} 失败`, e)
-      showToast(`加载失败：${e.message}`, 'error')
+      if (optional) setRows([])
+      else showToast(`加载失败：${e.message}`, 'error')
     } finally {
       setLoading(false)
     }

@@ -22,7 +22,7 @@ git push origin main → Vercel 自动构建发布（约1-2分钟）
 | 页面 | 文件 | 说明 |
 |---|---|---|
 | 人生看板 | Dashboard/DashboardPage | 核心原则 + **每日三向**(DailyFocusCard，daily_focus 表) + 今日概览 + 人生阶段面板(life_stage 表) + 检查点提醒 |
-| 每日一记 | Journal/JournalPage | 快记(AI 提炼后确认入库) + 心情(1-5) + 感恩，心情曲线 |
+| 每日一记 | Journal/JournalPage | 快记(AI 提炼后确认入库) + **启示条**(InsightBar，insights 表) + **主线面板**(ThreadsPanel，journal_threads 表) + 心情(1-5)/感恩/心情曲线 + 按天折叠的笔记流 |
 | 健康 | Health/HealthPage | 4 tabs：体成分(BodyTab)/血液检查(BloodTab)/指标记录/体检报告；指标定义在 constants 的 METRIC_TYPES、BODY_METRICS、BLOOD_PANEL |
 | 习惯 | Habits/HabitsPage | 7天打卡网格 + streak；habit_logs 以 (habit_id, log_date) 判打卡 |
 | 目标 | Goals/GoalsPage | 目标卡片 + 详情弹窗(里程碑/检查点自检/过程记录/复盘) |
@@ -37,7 +37,7 @@ git push origin main → Vercel 自动构建发布（约1-2分钟）
 
 ## 数据层
 
-- 通用 hook：`src/hooks/useTable.js`（rows/loading/add/patch/del/reload），opts 走 JSON 序列化做依赖，可放心传字面量。
+- 通用 hook：`src/hooks/useTable.js`（rows/loading/add/patch/del/reload），opts 走 JSON 序列化做依赖，可放心传字面量。`opts.optional=true` 时表不存在（新版 SQL 未执行）静默返回空数组，不弹错误提示。
 - 附件上传：`dataStore.uploadFile(file)` → Supabase Storage bucket `attachments`（演示模式转 base64，限 1.5MB）。
 - 全部表清单：`constants.ALL_TABLES`（备份导出用，新表要同步加）。
 

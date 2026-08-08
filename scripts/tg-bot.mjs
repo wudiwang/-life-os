@@ -204,6 +204,21 @@ const healthPrompt = (data, ask) => `你是昊天的私人健康顾问，服务�
 ${data}
 ${ask ? `\n【他的问题】${ask}` : ''}`
 
+// 提炼前把主线和启示取出来当「记忆」，让 AI 认得出老想法的新说法。
+// 表还没建（v7 未执行）时静默降级为无记忆，不阻断提炼。
+async function loadMemory() {
+  try {
+    const [threads, insights] = await Promise.all([
+      sb('journal_threads?select=id,title,summary&status=eq.active&order=sort_order.asc'),
+      sb('insights?select=id,title,hits&active=is.true&order=hits.desc&limit=40'),
+    ])
+    return { threads: threads || [], insights: insights || [] }
+  } catch (e) {
+    console.log(`（无记忆提炼：${e.message.slice(0, 60)}）`)
+    return null
+  }
+}
+
 async function runJob(job) {
   const kind = job.kind || 'refine_note'
   if (!await claimJob(job.id)) return // 被别的实例抢先了，跳过
@@ -221,9 +236,13 @@ async function runJob(job) {
       return
     }
 
-    const result = parseRefineResult(await claudeAsync(buildRefinePrompt(job.input, job.context)))
+    const memory = await loadMemory()
+    const result = parseRefineResult(await claudeAsync(buildRefinePrompt(job.input, job.context, memory)))
     await patchJob(job.id, { status: 'done', result, error: null, finished_at: new Date().toISOString() })
-    console.log(`✨ 提炼完成：${result.comment || '(无说明)'}（知识 ${result.knowledge.length} 条 / 待办 ${result.todos.length} 条）`)
+    const dedup = result.insight?.merge_into
+      ? ' / 命中老启示，合并计数'
+      : result.insight ? ' / 新启示 1 条' : ''
+    console.log(`✨ 提炼完成：${result.comment || '(无说明)'}（知识 ${result.knowledge.length} 条 / 待办 ${result.todos.length} 条${dedup}）`)
   } catch (e) {
     await patchJob(job.id, { status: 'error', error: String(e.message).slice(0, 500), finished_at: new Date().toISOString() })
     console.error(`❌ 任务失败 ${job.id.slice(0, 8)}：`, e.message)

@@ -3,7 +3,7 @@ import { useTable } from '../../hooks/useTable'
 import { db, isDemo } from '../../lib/dataStore'
 import { useUIStore } from '../../store/useUIStore'
 import { useIsMobile } from '../../hooks/useIsMobile'
-import { COLORS, MOODS } from '../../lib/constants'
+import { COLORS, MOODS, trackOf } from '../../lib/constants'
 import { Card } from '../../components/common/StatCard'
 import { Modal, ModalActions } from '../../components/common/Modal'
 import { FormField, TextInput, TextArea } from '../../components/common/FormField'
@@ -11,6 +11,8 @@ import { EmptyState, IconBtn } from '../../components/common/EmptyState'
 import { TrendChart } from '../../components/common/TrendChart'
 import { Badge } from '../../components/common/Badge'
 import { todayStr, addDays } from '../../lib/date'
+import { InsightBar } from './InsightBar'
+import { ThreadsPanel } from './ThreadsPanel'
 
 const PRIORITY_LABEL = { high: '高', mid: '中', low: '低' }
 const PRIORITY_COLOR = { high: COLORS.red, mid: COLORS.orange, low: COLORS.gray }
@@ -144,10 +146,14 @@ function PlainCard({ at, text }) {
 export function JournalPage() {
   const { rows, add, patch, del } = useTable('journal_entries', { orderBy: 'entry_date', ascending: false })
   const { rows: jobs, reload: reloadJobs } = useTable('ai_jobs', { orderBy: 'created_at', ascending: false })
+  // 主线与启示：提炼确认时要按 AI 的判重结果回写计数
+  const { rows: threads, reload: reloadThreads } = useTable('journal_threads', { orderBy: 'sort_order', ascending: true, optional: true })
+  const { rows: insights, reload: reloadInsights } = useTable('insights', { orderBy: 'hits', ascending: false, optional: true })
   const [modal, setModal] = useState(null)
   const [quick, setQuick] = useState('')
   const [busy, setBusy] = useState('')
   const [draft, setDraft] = useState(null)
+  const [openDays, setOpenDays] = useState({})
   const isMobile = useIsMobile()
   const showToast = useUIStore(s => s.showToast)
   const set = (k, v) => setModal(d => ({ ...d, [k]: v }))
@@ -218,6 +224,7 @@ export function JournalPage() {
     ...job.result,
     pickK: (job.result.knowledge || []).map(() => true),
     pickT: (job.result.todos || []).map(() => true),
+    pickI: true,
   })
 
   const waitForJob = async id => {
@@ -308,10 +315,39 @@ export function JournalPage() {
         nt++
       }
 
+      // 启示：命中老的只加计数（这就是去重），确实是新的才建一条
+      const now = new Date().toISOString()
+      const thread = threads.find(t => t.id === draft.thread_id)
+      let insightMsg = ''
+      const hit = draft.insight?.merge_into && insights.find(r => r.id === draft.insight.merge_into)
+      if (hit) {
+        await db.update('insights', hit.id, { hits: (hit.hits || 1) + 1, updated_at: now })
+        insightMsg = ` · 启示「${hit.title}」+1`
+      } else if (draft.insight?.title && draft.pickI) {
+        await db.insert('insights', {
+          thread_id: thread?.id || null,
+          title: draft.insight.title,
+          detail: draft.insight.detail,
+          track: thread?.track || null,
+          source_quote: String(draft.raw || '').slice(0, 120),
+          source_date: draft.date,
+          hits: 1,
+          active: true,
+        })
+        insightMsg = ' · 新启示 1 条'
+      }
+
+      if (thread) {
+        await db.update('journal_threads', thread.id, {
+          mention_count: (thread.mention_count || 0) + 1,
+          last_noted_at: now,
+        })
+      }
+
       await db.update('ai_jobs', draft.jobId, { status: 'applied' })
-      await reloadJobs()
+      await Promise.all([reloadJobs(), reloadThreads(), reloadInsights()])
       setDraft(null)
-      showToast(`已存：日记 1 条${nk ? ` · 笔记 ${nk} 条` : ''}${nt ? ` · 待办 ${nt} 条` : ''}`)
+      showToast(`已存：日记 1 条${nk ? ` · 笔记 ${nk} 条` : ''}${nt ? ` · 待办 ${nt} 条` : ''}${insightMsg}`)
     } catch (e) {
       showToast(`保存失败：${e.message}`, 'error')
     } finally {
@@ -334,6 +370,9 @@ export function JournalPage() {
       setBusy('')
     }
   }
+
+  const draftThread = draft ? threads.find(t => t.id === draft.thread_id) : null
+  const draftHit = draft?.insight?.merge_into ? insights.find(r => r.id === draft.insight.merge_into) : null
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -359,6 +398,42 @@ export function JournalPage() {
 
           {draft.journal.gratitude && (
             <div style={{ marginTop: 8, fontSize: 13, color: COLORS.orange }}>✨ {draft.journal.gratitude}</div>
+          )}
+
+          {draftThread && (
+            <div style={{
+              marginTop: 12, fontSize: 13, padding: '8px 12px', borderRadius: 8,
+              background: trackOf(draftThread.track).color + '0D',
+              border: `1px solid ${trackOf(draftThread.track).color}33`,
+            }}>
+              🧵 这笔归到主线 <b>{draftThread.title}</b>
+            </div>
+          )}
+
+          {draftHit && (
+            <div style={{
+              marginTop: 8, fontSize: 13, padding: '8px 12px', borderRadius: 8,
+              background: '#FFFBEB', border: `1px solid ${COLORS.orange}44`, lineHeight: 1.6,
+            }}>
+              💡 这个想法你说过 <b>{draftHit.hits}</b> 次了：「{draftHit.title}」
+              <div style={{ fontSize: 12, color: COLORS.textLight, marginTop: 2 }}>
+                只加一次计数，不再重复存——省得第二大脑越来越乱
+              </div>
+            </div>
+          )}
+
+          {!draftHit && draft.insight?.title && (
+            <div style={{ marginTop: 16 }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: COLORS.textLight, marginBottom: 8 }}>
+                💡 一条新启示（会每天提醒你）
+              </div>
+              <PickRow picked={draft.pickI} onToggle={() => setDraft(d => ({ ...d, pickI: !d.pickI }))}>
+                <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>{draft.insight.title}</div>
+                {draft.insight.detail && (
+                  <div style={{ fontSize: 13, color: COLORS.textLight, lineHeight: 1.6 }}>{draft.insight.detail}</div>
+                )}
+              </PickRow>
+            </div>
           )}
 
           {draft.knowledge?.length > 0 && (
@@ -449,6 +524,10 @@ export function JournalPage() {
         </div>
       )}
 
+      {/* 归纳层：先看"我该记住什么"和"我在推进什么"，再看流水 */}
+      <InsightBar />
+      <ThreadsPanel />
+
       {/* 今日概览 */}
       <Card>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -483,14 +562,24 @@ export function JournalPage() {
       {/* 笔记流：按天分组，每一笔单独成块 */}
       {days.length === 0 ? (
         <Card><EmptyState icon="🕊️" text="每天一分钟，一年后你会感谢现在开始记录的自己" /></Card>
-      ) : days.slice(0, 30).map(g => {
+      ) : days.slice(0, 30).map((g, gi) => {
         const label = dayLabel(g.date)
+        // 今天和昨天默认展开，更早的折叠成一行摘要——点标题栏切换
+        const open = openDays[g.date] ?? gi < 2
+        const first = g.items[0]
+        const preview = first?.job ? (first.job.result?.journal?.content || first.job.input) : first?.text
         return (
           <Card key={g.date}>
-            <div style={{
-              display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12,
-              paddingBottom: 10, borderBottom: `1px solid ${COLORS.border}`, flexWrap: 'wrap',
-            }}>
+            <div
+              onClick={() => setOpenDays(d => ({ ...d, [g.date]: !open }))}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', flexWrap: 'wrap',
+                marginBottom: open ? 12 : 0,
+                paddingBottom: open ? 10 : 0,
+                borderBottom: open ? `1px solid ${COLORS.border}` : 'none',
+              }}
+            >
+              <span style={{ fontSize: 12, color: COLORS.textLight, width: 12 }}>{open ? '▾' : '▸'}</span>
               {label && <Badge color={COLORS.primary}>{label}</Badge>}
               <span style={{ fontSize: 15, fontWeight: 600 }}>{g.date}</span>
               <span style={{ fontSize: 13, color: COLORS.textLight }}>{g.items.length} 笔</span>
@@ -498,22 +587,31 @@ export function JournalPage() {
                 <span style={{ fontSize: 16 }}>{MOODS.find(m => m.value === g.entry.mood)?.icon}</span>
               )}
               <div style={{ flex: 1 }} />
-              {g.entry && (
+              {open && g.entry && (
                 <>
-                  <IconBtn onClick={() => openEditor(g.entry)} color={COLORS.primary}>编辑</IconBtn>
-                  <IconBtn onClick={() => del(g.entry.id)} color={COLORS.red}>删</IconBtn>
+                  <IconBtn onClick={e => { e.stopPropagation(); openEditor(g.entry) }} color={COLORS.primary}>编辑</IconBtn>
+                  <IconBtn onClick={e => { e.stopPropagation(); del(g.entry.id) }} color={COLORS.red}>删</IconBtn>
                 </>
               )}
             </div>
 
-            {g.items.map(it => (
-              it.job
-                ? <NoteCard key={it.key} job={it.job} onConfirm={openDraft} />
-                : <PlainCard key={it.key} at={it.at} text={it.text} />
-            ))}
+            {open ? (
+              <>
+                {g.items.map(it => (
+                  it.job
+                    ? <NoteCard key={it.key} job={it.job} onConfirm={openDraft} />
+                    : <PlainCard key={it.key} at={it.at} text={it.text} />
+                ))}
 
-            {g.entry?.gratitude && (
-              <div style={{ fontSize: 13, color: COLORS.orange, marginTop: 4 }}>✨ {g.entry.gratitude}</div>
+                {g.entry?.gratitude && (
+                  <div style={{ fontSize: 13, color: COLORS.orange, marginTop: 4 }}>✨ {g.entry.gratitude}</div>
+                )}
+              </>
+            ) : preview && (
+              <div style={{
+                fontSize: 13, color: COLORS.textLight, lineHeight: 1.6, marginTop: 6,
+                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+              }}>{preview}</div>
             )}
           </Card>
         )

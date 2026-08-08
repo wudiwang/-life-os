@@ -155,6 +155,17 @@ export const FOCUS_TRACKS = [
   },
 ]
 
+// 主线（journal_threads）：随笔背后长期在推进的那几条线
+export const THREAD_STATUS = [
+  { key: 'active', label: '推进中', color: COLORS.primary },
+  { key: 'paused', label: '搁置', color: COLORS.gray },
+  { key: 'done', label: '已完成', color: COLORS.green },
+]
+
+// 主线/启示归属的方向复用三向，另加一个兜底
+export const TRACK_OTHER = { key: 'other', label: '其他', short: '其他', icon: '📎', color: COLORS.gray }
+export const trackOf = key => FOCUS_TRACKS.find(t => t.key === key) || TRACK_OTHER
+
 export const MOODS = [
   { value: 1, icon: '😞', label: '很差' },
   { value: 2, icon: '😕', label: '不佳' },
@@ -172,4 +183,5 @@ export const ALL_TABLES = [
   'relation_people', 'relation_logs',
   'journal_entries', 'ai_reviews', 'life_stage',
   'ai_jobs', 'blood_metrics', 'daily_focus',
+  'journal_threads', 'insights',
 ]
