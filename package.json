@@ -11,7 +11,8 @@
     "ai": "node scripts/ai-review-local.mjs",
     "bot": "node scripts/bot-forever.mjs",
     "bot:once": "node scripts/tg-bot.mjs",
-    "sync": "node scripts/sync-project-progress.mjs"
+    "sync": "node scripts/sync-project-progress.mjs",
+    "sql": "node scripts/run-sql.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.103.0",

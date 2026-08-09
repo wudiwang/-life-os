@@ -6,7 +6,9 @@
 
 0. **双端同步适配**：所有需求改动必须同时适配 PC 端和移动端（H5）。布局用 `hooks/useIsMobile.js` 区分；共用组件优先（如 QuickJournalFab、NavContent），避免只改一端。
 1. **双模式数据层**：所有数据读写必须走 `src/lib/dataStore.js` 的 `db.*`（list/insert/update/remove）。它在无 Supabase 密钥时自动降级 localStorage 演示模式。**不要在页面里直接 import supabase client**。
-2. **DDL 不走 REST**：建表/改列写 `supabase/vN_*.sql`（版本递增），由用户在 Supabase SQL Editor 手动执行。新表必须 `disable row level security`。
+2. **DDL 不走 REST**：建表/改列写 `supabase/vN_*.sql`（版本递增）。新表必须 `disable row level security`。
+   执行方式：`npm run sql -- supabase/vN_xxx.sql`（走 Management API，需 `.env` 里有 `SUPABASE_ACCESS_TOKEN=sbp_xxx`；
+   `npm run sql -- --check` 可验证 token 是否属于本项目所属账号）。没配 token 时退回用户手动去 SQL Editor 粘贴。
 3. **密钥绝不进 git**：`.env` 已被 gitignore。服务端密钥（CLAUDE_API_KEY）只放 Vercel 环境变量。
 4. **时间展示北京时间**：数据库存 UTC（timestamptz），展示用 `src/lib/date.js` 的工具函数。
 5. 纯 inline 样式，色板用 `src/lib/constants.js` 的 `COLORS`；主蓝 `#3B82F6`。
