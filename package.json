@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "ai": "node scripts/ai-review-local.mjs",
     "bot": "node scripts/bot-forever.mjs",
-    "bot:once": "node scripts/tg-bot.mjs"
+    "bot:once": "node scripts/tg-bot.mjs",
+    "sync": "node scripts/sync-project-progress.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.103.0",

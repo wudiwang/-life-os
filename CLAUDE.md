@@ -54,6 +54,25 @@ git push origin main → Vercel 自动构建发布（约1-2分钟）
 2. 命令行：`npm run ai [模块] [问题]`（scripts/ai-review-local.mjs）——同样走本机订阅，写回 ai_reviews。
 3. 在线（备用，默认没配）：AIPage → /api/ai-review，需 Vercel 配 CLAUDE_API_KEY。
 
+## 跨项目每日进度同步（scripts/sync-project-progress.mjs）
+
+别的 Claude Code 项目（如 `C:\Users\ADMIN\trade` 交易系统）每天的迭代进展，由本机计划任务每晚自动汇总写回，用户不用再口述一遍。
+
+```
+Windows 计划任务 life-os-daily-sync（每天 22:07）
+  → 在目标项目目录里跑 claude -p（订阅额度）：读 git log/未提交改动/项目文档
+  → 产出 JSON {active,summary,win,next_action,insight,highlights}
+  → 写 daily_focus（对应 track 的格子）+ journal_threads.next_action + insights
+  → TG 推一条摘要
+```
+
+- 加新项目：改脚本顶部的 `PROJECTS` 数组（key/name/path/track/threadMatch）。
+- 手动补跑：`npm run sync -- --date 2026-08-03`；干跑 `--dry`；单项目 `--only trade`。
+- 当天无提交且工作区干净 → 直接跳过，不写不推送。AI 判定只有琐碎改动也会 `active:false`。
+- 写 `daily_focus.content` 时只覆盖 `—— <项目名> · 自动同步 ——` 标记之后的内容，用户手写部分保留；`win` 仅在为空时填。
+- 计划任务安装/卸载：`scripts/install-daily-sync.ps1`（`-At` 改时间、`-WithBotAutostart` 顺带注册大仙开机自启、`-Uninstall` 移除）。
+  **该 .ps1 必须存成 UTF-8 with BOM**——PowerShell 5.1 会把无 BOM 的 UTF-8 当 ANSI 读，中文乱码且参数解析出错。
+
 **快记链路**：输入 → 原话立即写 `journal_entries.raw_input`（保底不丢）→ 建 ai_jobs → 提炼回来弹确认卡片 → 用户勾选后：整理后正文进 `content`、知识资产进 `knowledge_notes`、待办进 `work_todos`。本机不在线就降级为原样存。
 
 ## 移动端
