@@ -12,6 +12,7 @@
     "bot": "node scripts/bot-forever.mjs",
     "bot:once": "node scripts/tg-bot.mjs",
     "sync": "node scripts/sync-project-progress.mjs",
+    "brief": "node scripts/daily-brief.mjs",
     "sql": "node scripts/run-sql.mjs"
   },
   "dependencies": {

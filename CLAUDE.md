@@ -23,7 +23,8 @@ git push origin main → Vercel 自动构建发布（约1-2分钟）
 
 | 页面 | 文件 | 说明 |
 |---|---|---|
-| 人生看板 | Dashboard/DashboardPage | 核心原则 + **每日三向**(DailyFocusCard，daily_focus 表) + 今日概览 + 人生阶段面板(life_stage 表) + 检查点提醒 |
+| 人生看板 | Dashboard/DashboardPage | **核心原则 + 每日落实**(PrincipleCard，principle_logs) + **本周行为契约**(WeeklyActionsCard) + **每日三向**(DailyFocusCard，daily_focus) + 今日概览 + 人生阶段面板(life_stage) + 检查点提醒 |
+| 人生 OKR | OKR/OKRPage | 年度/季度 Objective(okr_objectives) + 拆出的每周行为契约(weekly_actions)。**结果指标只在回顾时看，每日只考核动作做没做**——个人自定 KPI 裁判即运动员，用结果指标每天自评必然放水或弃疗 |
 | 每日一记 | Journal/JournalPage | 快记(AI 提炼后确认入库) + **启示条**(InsightBar，insights 表) + **主线面板**(ThreadsPanel，journal_threads 表) + 心情(1-5)/感恩/心情曲线 + 按天折叠的笔记流 |
 | 健康 | Health/HealthPage | 4 tabs：体成分(BodyTab)/血液检查(BloodTab)/指标记录/体检报告；指标定义在 constants 的 METRIC_TYPES、BODY_METRICS、BLOOD_PANEL |
 | 习惯 | Habits/HabitsPage | 7天打卡网格 + streak；habit_logs 以 (habit_id, log_date) 判打卡 |
@@ -39,7 +40,7 @@ git push origin main → Vercel 自动构建发布（约1-2分钟）
 
 ## 数据层
 
-- 通用 hook：`src/hooks/useTable.js`（rows/loading/add/patch/del/reload），opts 走 JSON 序列化做依赖，可放心传字面量。`opts.optional=true` 时表不存在（新版 SQL 未执行）静默返回空数组，不弹错误提示。
+- 通用 hook：`src/hooks/useTable.js`（rows/loading/**missing**/add/patch/del/reload），opts 走 JSON 序列化做依赖，可放心传字面量。`opts.optional=true` 时表不存在（新版 SQL 未执行）静默返回空数组，不弹错误提示——但会把 `missing=true` 暴露出来，**页面必须用 `<TableMissing sql="vN_xxx.sql" />` 显式提示**，否则漏执行迁移只会表现为一片空白（v7 就这样静默了好几天没人发现）。
 - 附件上传：`dataStore.uploadFile(file)` → Supabase Storage bucket `attachments`（演示模式转 base64，限 1.5MB）。
 - 全部表清单：`constants.ALL_TABLES`（备份导出用，新表要同步加）。
 
@@ -76,6 +77,23 @@ Windows 计划任务 life-os-daily-sync（每天 22:07）
   **该 .ps1 必须存成 UTF-8 with BOM**——PowerShell 5.1 会把无 BOM 的 UTF-8 当 ANSI 读，中文乱码且参数解析出错。
 
 **快记链路**：输入 → 原话立即写 `journal_entries.raw_input`（保底不丢）→ 建 ai_jobs → 提炼回来弹确认卡片 → 用户勾选后：整理后正文进 `content`、知识资产进 `knowledge_notes`、待办进 `work_todos`。本机不在线就降级为原样存。
+
+## 每日闭环：TG 才是入口，网页是回顾工具（IMPORTANT）
+
+网页需要用户「主动想起来」，而这类系统的价值恰恰依赖于「不用想起来」——靠自律提高打开率是死循环。
+所以每日闭环全部走 Telegram，网页降级为周末回顾。
+
+```
+早 8:30  life-os-brief-morning → daily-brief.mjs --morning → 核心原则 + 今天该做的动作（带编号）+ 高优待办
+晚 21:30 life-os-brief-evening → daily-brief.mjs --evening → 收工三问：动作 / 原则落在哪件事 / 明天第一件事
+用户在 TG 回「1」「1 3」→ tg-bot.mjs 的 quickCheckin 直接写 weekly_action_logs（不调 claude，零等待）
+        回「原则 xxx」→ 写 principle_logs；回「打卡」看清单；回「三向」看提示词
+```
+
+- 打卡必须走确定性快路：过 claude 要几十秒，那点延迟足以劝退打卡。自然语言打卡才交给 claude（SYSTEM 准则 12）。
+- 动作编号 = `weekly_actions` 中 active 行按 `sort_order` 的序号，简报与打卡两边一致，不随消息变化。
+- 计划任务：`scripts/install-daily-brief.ps1`（`-Morning`/`-Evening` 改时间、`-Uninstall` 移除）。同样必须存成 **UTF-8 with BOM**。
+- 手动试推：`npm run brief -- --morning --dry`。
 
 ## 移动端
 

@@ -19,6 +19,7 @@ export const COLORS = {
 
 export const NAV_ITEMS = [
   { key: 'dashboard', label: '人生看板', icon: '🏠' },
+  { key: 'okr', label: '人生 OKR', icon: '🧗' },
   { key: 'journal', label: '每日一记', icon: '📔' },
   { key: 'health', label: '健康', icon: '❤️' },
   { key: 'habits', label: '习惯', icon: '🔁' },
@@ -184,4 +185,17 @@ export const ALL_TABLES = [
   'journal_entries', 'ai_reviews', 'life_stage',
   'ai_jobs', 'blood_metrics', 'daily_focus',
   'journal_threads', 'insights',
+  'okr_objectives', 'weekly_actions', 'weekly_action_logs', 'principle_logs',
+]
+
+// OKR 层级。结果指标只在回顾时看，每日/每周只考核 weekly_actions 的动作完成度。
+export const OKR_LEVELS = [
+  { key: 'year', label: '年度', icon: '🗓', color: COLORS.purple, hint: '一年的大方向，最多 1-2 条' },
+  { key: 'quarter', label: '季度', icon: '📌', color: COLORS.primary, hint: '这个季度真正要推动的事，3-4 条封顶' },
+]
+
+export const OKR_STATUS = [
+  { key: 'active', label: '进行中', color: COLORS.primary },
+  { key: 'done', label: '已达成', color: COLORS.green },
+  { key: 'dropped', label: '已放弃', color: COLORS.gray },
 ]

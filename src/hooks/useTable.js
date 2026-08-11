@@ -8,6 +8,7 @@ import { useUIStore } from '../store/useUIStore'
 export function useTable(table, opts = {}) {
   const [rows, setRows] = useState([])
   const [loading, setLoading] = useState(true)
+  const [missing, setMissing] = useState(false)
   const showToast = useUIStore(s => s.showToast)
   const optsKey = JSON.stringify(opts)
 
@@ -15,9 +16,12 @@ export function useTable(table, opts = {}) {
     const { optional, ...listOpts } = JSON.parse(optsKey)
     try {
       setRows(await db.list(table, listOpts))
+      setMissing(false)
     } catch (e) {
       console.error(`加载 ${table} 失败`, e)
-      if (optional) setRows([])
+      // optional 表静默降级，但要把「表还没建」暴露给 UI——
+      // 否则 SQL 忘了执行时页面只是空白，看不出是漏了迁移（v7 就这么静默了好几天）
+      if (optional) { setRows([]); setMissing(true) }
       else showToast(`加载失败：${e.message}`, 'error')
     } finally {
       setLoading(false)
@@ -58,5 +62,5 @@ export function useTable(table, opts = {}) {
     }
   }, [table, reload, showToast])
 
-  return { rows, loading, reload, add, patch, del }
+  return { rows, loading, missing, reload, add, patch, del }
 }

@@ -8,6 +8,8 @@ import { Badge } from '../../components/common/Badge'
 import { todayStr, fmtDate, daysBetween } from '../../lib/date'
 import { useUIStore } from '../../store/useUIStore'
 import { DailyFocusCard } from './DailyFocusCard'
+import { PrincipleCard } from './PrincipleCard'
+import { WeeklyActionsCard } from './WeeklyActionsCard'
 
 const STAGE_FIELDS = [
   { key: 'stage', label: '阶段定位', icon: '📍', hint: '我现在处于人生哪个阶段？（年龄、身份、核心矛盾）' },
@@ -53,21 +55,16 @@ export function DashboardPage() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      {/* 核心原则横幅 */}
-      <div
-        onClick={() => setEditing({ field: 'principle', content: principle?.content || '', id: principle?.id })}
-        style={{
-          background: 'linear-gradient(135deg, #1E3A8A, #3B82F6)', color: '#fff',
-          borderRadius: 12, padding: '16px 20px', cursor: 'pointer',
-        }}
-      >
-        <div style={{ fontSize: 12, opacity: 0.85, marginBottom: 6 }}>⚡ 核心原则</div>
-        <div style={{ fontSize: 16, fontWeight: 700, lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
-          {principle?.content || '点击写下你的核心原则，让它每天第一眼提醒你'}
-        </div>
-      </div>
+      {/* 核心原则 + 今天它落在哪件事上（每日必答，地位高于三向） */}
+      <PrincipleCard
+        principle={principle}
+        onEditPrinciple={() => setEditing({ field: 'principle', content: principle?.content || '', id: principle?.id })}
+      />
 
-      {/* 每日三向：固定思考方向打卡，紧跟核心原则占住第一屏 */}
+      {/* 本周行为契约：只考核动作做没做 */}
+      <WeeklyActionsCard />
+
+      {/* 每日三向：固定思考方向打卡 */}
       <DailyFocusCard />
 
       {/* 今日概览 */}

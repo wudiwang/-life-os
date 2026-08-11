@@ -37,3 +37,24 @@ export function lastNDays(n) {
   for (let i = n - 1; i >= 0; i--) out.push(addDays(todayStr(), -i))
   return out
 }
+
+// 周一为一周第一天：1=周一 … 7=周日
+export function weekdayIndex(dateStr = todayStr()) {
+  return ((new Date(dateStr).getDay() + 6) % 7) + 1
+}
+
+// 本周的 7 个日期（周一 → 周日，升序）
+export function thisWeekDays(dateStr = todayStr()) {
+  const mon = addDays(dateStr, -(weekdayIndex(dateStr) - 1))
+  return Array.from({ length: 7 }, (_, i) => addDays(mon, i))
+}
+
+export function currentYear(dateStr = todayStr()) {
+  return String(new Date(dateStr).getFullYear())
+}
+
+// '2026Q3'
+export function currentQuarter(dateStr = todayStr()) {
+  const d = new Date(dateStr)
+  return `${d.getFullYear()}Q${Math.floor(d.getMonth() / 3) + 1}`
+}

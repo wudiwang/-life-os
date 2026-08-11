@@ -10,9 +10,11 @@ import { ExplorePage } from './Explore/ExplorePage'
 import { KnowledgePage } from './Knowledge/KnowledgePage'
 import { RelationsPage } from './Relations/RelationsPage'
 import { JournalPage } from './Journal/JournalPage'
+import { OKRPage } from './OKR/OKRPage'
 
 export const PAGES = {
   dashboard: DashboardPage,
+  okr: OKRPage,
   journal: JournalPage,
   health: HealthPage,
   habits: HabitsPage,

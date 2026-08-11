@@ -60,7 +60,8 @@ journal_entries(entry_date,mood 1-5,content,gratitude) 每日一记 | health_met
 habits(name,icon,target_per_week,active) + habit_logs(habit_id,log_date,done) 习惯打卡 | goals(title,level:year/quarter/month/short,status:planning/active/done/dropped,due_date) + goal_milestones(goal_id,title,due_date,check_criteria,status,check_result) + goal_logs(goal_id,log_date,content) 目标
 work_todos(title,priority:high/mid/low,due_date,status:open/done) + work_logs(log_date,content,output,issues) + work_profile(field,content) + work_contacts 工作
 explore_records(title,category:food/travel/experience/insight/other,record_date,location,rating,content) 探索 | knowledge_notes(title,category,tags,content,source) 第二大脑
-relation_people(name,rel_type:family/friend/love,birthday,closeness) + relation_logs(person_id,log_date,event,feeling) 情感 | ai_reviews(module,prompt_summary,content) AI分析历史 | life_stage(field:stage/focus/advice,content) 人生阶段
+relation_people(name,rel_type:family/friend/love,birthday,closeness) + relation_logs(person_id,log_date,event,feeling) 情感 | ai_reviews(module,prompt_summary,content) AI分析历史 | life_stage(field:principle/stage/focus/advice,content) 人生阶段
+okr_objectives(level:year/quarter,period,title,track,why,metric,metric_target,metric_current,status) 年度/季度目标 | weekly_actions(title,detail,track,objective_id,per_week,weekdays,active,sort_order) 每周行为契约 + weekly_action_logs(action_id,log_date) 打卡 | principle_logs(log_date,content,skipped) 核心原则每日落实 | daily_focus(log_date,track:work/trade/life,content,win) 每日三向
 
 ## 行为准则
 1. 用户随口说的事，主动判断该进哪张表：如"今天心情不错，跑了5公里" → journal_entries 记一笔 + 若有跑步习惯则 habit_logs 打卡；拿不准就问一句。
@@ -79,7 +80,13 @@ relation_people(name,rel_type:family/friend/love,birthday,closeness) + relation_
    - 回写：当你查库+综合思考后产出了有价值的结论（复盘、对比、建议被用户认可），主动存为笔记（source 标"大仙合成"），别让好答案随聊天蒸发。
    - 互链：归档新笔记前先 list 同分类已有标题，相关的在正文末尾加一行"相关：《某笔记标题》"。
    - 矛盾标注：发现新内容与旧笔记冲突时，在新笔记里明确写"与《旧笔记》观点冲突：…"并告知用户。
-11. 用户发文件给你时（TG 文件暂不能直接入库）：请他到网页端第二大脑上传附件，或把关键内容发文字给你来归档。`
+11. 用户发文件给你时（TG 文件暂不能直接入库）：请他到网页端第二大脑上传附件，或把关键内容发文字给你来归档。
+12. 行为契约与打卡（重要）：
+   - 他用自然语言说做完了某个固定动作（如"周报发了""刚躺下""项目过完了"），先 list weekly_actions 找到对应那条，再往 weekly_action_logs 插 (action_id, log_date=今天)。已存在就别重复插。
+   - 他讲到今天把核心原则用在了哪件事上 → 写 principle_logs(log_date, content)。一天一条，已有就 update。
+   - 纯数字打卡和"原则 xxx"由机器人本地快路处理，不会进到你这儿；你只管自然语言那部分。
+   - 定新目标/新动作时提醒他：每日只考核动作做没做，别把结果指标（收入、体脂数字）拿来每天自评——裁判和运动员是同一个人，那样必然放水或弃疗。动作数量和执行率成反比，能压成一条就别写四条。
+13. 他现在是远程项目经理，最大的压力源是"远程工作的价值不可见"。当他表达工作焦虑时，别只安慰——把话题引到"这周的可见交付物做了没有"（周报、项目过账），那才是这类焦虑的正面战场。`
 
 function askClaude(chatId, userText) {
   const sid = sessions[chatId]
@@ -130,7 +137,15 @@ async function handleMessage(msg) {
     return
   }
   if (text === '/start') {
-    await reply(chatId, '👋 我是大仙，你的人生 OS 管家。随便跟我说：记一笔今天的心情、加个待办、查查最近体重、聊聊目标……都行。发 /new 可重开会话。')
+    await reply(chatId, '👋 我是大仙，你的人生 OS 管家。随便跟我说：记一笔今天的心情、加个待办、查查最近体重、聊聊目标……都行。\n\n快捷指令：「打卡」看今日动作，回数字完成打卡；「原则 xxx」记原则落实。发 /new 可重开会话。')
+    return
+  }
+
+  // 打卡走确定性快路：不调 claude，立刻回，别让几十秒的等待劝退打卡
+  const quick = await quickCheckin(text)
+  if (quick) {
+    console.log(`⚡ 快捷打卡：${text.slice(0, 30)}`)
+    await reply(chatId, quick)
     return
   }
 
@@ -152,6 +167,110 @@ async function sb(path, init = {}) {
   const body = await resp.text()
   if (!resp.ok) throw new Error(`${resp.status} ${body.slice(0, 200)}`)
   return body ? JSON.parse(body) : null
+}
+
+// ── TG 里直接打卡：不过 claude，回一个数字就入库，零等待 ──────────────
+// 每多一步跳转，执行率就掉一半。所以打卡必须便宜到「回一个字符」。
+// 走 claude 要几十秒，那点延迟足以让人放弃打卡，所以这条路必须是确定性的。
+const todayStr = () => new Date().toLocaleDateString('sv-SE')
+
+// 编号 = active 动作按 sort_order 的序号，与早晚简报里的编号一致且不随消息变化
+async function activeActions() {
+  const rows = await sb('weekly_actions?select=*&active=is.true&order=sort_order.asc')
+  return (rows || []).map((a, i) => ({ ...a, no: i + 1 }))
+}
+
+async function markPrinciple(body) {
+  const day = todayStr()
+  const skipped = /^(没有|没|没落实|无|跳过|算了)$/.test(body)
+  const payload = { log_date: day, content: skipped ? '' : body, skipped }
+  const existing = await sb(`principle_logs?select=id&log_date=eq.${day}`)
+  if (existing?.length) {
+    await sb(`principle_logs?id=eq.${existing[0].id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ ...payload, updated_at: new Date().toISOString() }),
+    })
+  } else {
+    await sb('principle_logs', { method: 'POST', body: JSON.stringify(payload) })
+  }
+  return skipped
+    ? '记下了：今天没落实。诚实记录比空着有价值——空白无法复盘。'
+    : `✅ 原则落实已记：${body}`
+}
+
+async function markActions(nos) {
+  const list = await activeActions()
+  if (!list.length) return '还没有行为契约。去「人生 OKR」页设几条再来打卡。'
+  const day = todayStr()
+  const hit = [], bad = [], dup = []
+  for (const n of nos) {
+    const a = list.find(x => x.no === n)
+    if (!a) { bad.push(n); continue }
+    const existing = await sb(`weekly_action_logs?select=id&action_id=eq.${a.id}&log_date=eq.${day}`)
+    if (existing?.length) { dup.push(a.title); continue }
+    await sb('weekly_action_logs', {
+      method: 'POST',
+      body: JSON.stringify({ action_id: a.id, log_date: day }),
+    })
+    hit.push(a.title)
+  }
+  const out = []
+  if (hit.length) out.push(`✅ 打卡：${hit.join('、')}`)
+  if (dup.length) out.push(`（${dup.join('、')} 今天已经打过了）`)
+  if (bad.length) out.push(`没有编号 ${bad.join('、')}，回「打卡」看当前清单。`)
+
+  // 顺手报本周进度，给一点进展感——焦虑的反面不是放松，是进展感
+  const after = await sb('weekly_action_logs?select=action_id,log_date&order=log_date.desc&limit=400')
+  const mon = new Date(day); mon.setDate(mon.getDate() - ((mon.getDay() + 6) % 7))
+  const week = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(mon); d.setDate(d.getDate() + i)
+    return d.toLocaleDateString('sv-SE')
+  })
+  const left = list.filter(a => {
+    const n = week.filter(d => after.some(l => l.action_id === a.id && l.log_date === d)).length
+    return n < (a.per_week || 1)
+  })
+  out.push(left.length ? `本周还差：${left.map(a => `${a.no}.${a.title}`).join('、')}` : '本周所有动作都达标了 🎉')
+  return out.join('\n')
+}
+
+async function listActions() {
+  const list = await activeActions()
+  if (!list.length) return '还没有行为契约。去「人生 OKR」页设几条。'
+  const logs = await sb('weekly_action_logs?select=action_id,log_date&order=log_date.desc&limit=400')
+  const day = todayStr()
+  const lines = list.map(a => {
+    const done = logs.some(l => l.action_id === a.id && l.log_date === day)
+    return `${done ? '✅' : '⬜'} ${a.no}. ${a.title}`
+  })
+  return `📋 今日动作（回数字打卡，如「1」或「1 3」）：\n${lines.join('\n')}\n\n原则落实回「原则 今天它落在哪件事上」。`
+}
+
+// 返回 null 表示不是打卡指令，交给 claude 正常处理
+async function quickCheckin(text) {
+  const t = text.trim()
+  try {
+    const mp = t.match(/^(原则|落实)[\s:：]*(.+)$/s)
+    if (mp) return await markPrinciple(mp[2].trim())
+
+    if (t === '打卡' || t === '/today') return await listActions()
+
+    if (t === '三向' || t === '/focus') {
+      const { FOCUS_TRACKS } = await import('../src/lib/constants.js')
+      return FOCUS_TRACKS.map(k =>
+        `${k.icon} ${k.label}\n${k.prompts.map(p => `· ${p}`).join('\n')}`
+      ).join('\n\n') + '\n\n想到什么直接说，我帮你记进对应方向。'
+    }
+
+    // 整条消息只有数字和分隔符才算打卡，避免误吞正常对话
+    if (/^[\d\s,，、+]+$/.test(t) && /\d/.test(t)) {
+      const nos = [...new Set(t.split(/[\s,，、+]+/).filter(Boolean).map(Number))].filter(n => n > 0)
+      if (nos.length) return await markActions(nos)
+    }
+  } catch (e) {
+    return `打卡失败：${e.message.slice(0, 120)}\n（v8_okr_commitments.sql 执行了吗？）`
+  }
+  return null
 }
 
 // 异步跑 claude（不用 spawnSync，避免卡住 TG 长轮询）
