@@ -118,9 +118,16 @@ async function main() {
           L.push(`${a.no}. ${a.title} ${tag}`)
         })
       }
+      // 「今天不用做」有两种原因，别混为一谈：固定星期还没到 ≠ 本周已达标
       const rest = numbered.filter(a => !dueToday.includes(a) && !doneOn(a.id, today))
-      if (rest.length) {
-        L.push(`\n本周已达标（今天不用做）：${rest.map(a => a.title).join('、')}`)
+      const notYet = rest.filter(a => a.weekdays && weekDone(a.id) < (a.per_week || 1))
+      const reached = rest.filter(a => !notYet.includes(a))
+      if (notYet.length) {
+        L.push(`\n今天不到日子：${notYet.map(a =>
+          `${a.title}（周${a.weekdays.split(',').map(k => WD[Number(k.trim()) - 1]).join('')}）`).join('、')}`)
+      }
+      if (reached.length) {
+        L.push(`\n本周已达标：${reached.map(a => a.title).join('、')}`)
       }
       L.push(`\n做完回数字打卡，如「1」或「1 3」`)
     }
