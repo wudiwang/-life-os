@@ -62,7 +62,9 @@ if ($WithBotAutostart) {
   $botCmd = "Set-Location '$proj'; node scripts/bot-forever.mjs 2>&1 | Out-File -FilePath '$logBot' -Append -Encoding utf8"
   $botAction = New-ScheduledTaskAction -Execute 'powershell.exe' `
     -Argument "-NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -Command `"$botCmd`""
-  $botTrigger = New-ScheduledTaskTrigger -AtLogOn
+  # 必须绑定当前用户：不带 -User 的 -AtLogOn 会被当成"所有用户登录时"，
+  # 注册需要管理员权限，普通权限下报 Access is denied。
+  $botTrigger = New-ScheduledTaskTrigger -AtLogOn -User "$env:USERDOMAIN\$env:USERNAME"
   $botSettings = New-ScheduledTaskSettingsSet -StartWhenAvailable `
     -DontStopIfGoingOnBatteries -AllowStartIfOnBatteries -ExecutionTimeLimit ([TimeSpan]::Zero)
 
