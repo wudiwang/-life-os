@@ -138,34 +138,38 @@ async function main() {
     }
     L.push(`\n———\n今天只要把上面这几条做掉，就算赢。别开新战线。`)
   } else {
-    L.push(`🌙 ${today} 收工三问`)
+    // 晚上这条是打卡主场：真正能打卡的时刻在晚上，所以第一屏就得是「回哪个数字」，
+    // 别把它埋在三问里——早上推的清单到晚上早被刷走了。
+    L.push(`🌙 ${today} 收工`)
 
-    // 一问：动作
-    if (actions.length) {
-      if (dueToday.length === 0) {
-        L.push(`\n① 动作 ✅ 今天该做的都打上了（${doneToday.length} 项）`)
-      } else {
-        L.push(`\n① 今天还差：`)
-        dueToday.forEach(a => L.push(`${a.no}. ${a.title}`))
-        L.push(`做了就回数字，如「${dueToday[0].no}」；没做就没做，明天补。`)
-      }
-    }
-
-    // 二问：原则落实 —— 这是每天必答的那一条
-    if (todayPrinciple && !todayPrinciple.skipped) {
-      L.push(`\n② 原则 ✅ 今天落在：${todayPrinciple.content}`)
-    } else if (todayPrinciple?.skipped) {
-      L.push(`\n② 原则：今天记为没落实。诚实记录也算数。`)
+    if (!actions.length) {
+      L.push('\n（还没有行为契约，去「人生 OKR」页设几条）')
+    } else if (dueToday.length === 0) {
+      L.push(`\n✅ 今天该做的动作都打上了（${doneToday.length} 项）`)
     } else {
-      L.push(`\n② 今天这条原则落在哪件具体的事上？`)
-      if (principle) L.push(`（${principle.split('\n')[0].slice(0, 40)}…）`)
-      L.push(`回「原则 xxx」记下来；确实没有就回「原则 没有」。`)
+      L.push(`\n👇 做了哪几条？回数字就行：`)
+      dueToday.forEach(a => L.push(`${a.no}. ${a.title}`))
+      if (doneToday.length) L.push(`\n（已打卡：${doneToday.map(a => a.title).join('、')}）`)
+      L.push(`\n回「${dueToday.map(a => a.no).join(' ')}」= 全打上；只做了一条就回那一个数字。`)
+      // 睡觉这类动作要在躺下那刻打卡，但那时候人正要放下手机——所以必须能次日补
+      L.push(`忘了打的明天补：回「昨 编号」，如「昨 ${dueToday[0].no}」。`)
     }
 
-    // 三问：明天第一个动作
+    // 原则落实 —— 每天必答的那一条
+    if (todayPrinciple && !todayPrinciple.skipped) {
+      L.push(`\n⚡ 原则 ✅ 今天落在：${todayPrinciple.content}`)
+    } else if (todayPrinciple?.skipped) {
+      L.push(`\n⚡ 原则：今天记为没落实。诚实记录也算数。`)
+    } else {
+      L.push(`\n⚡ 今天这条原则落在哪件具体的事上？回「原则 xxx」`)
+      if (principle) L.push(`（${principle.split('\n')[0].slice(0, 40)}…）`)
+      L.push(`确实没有就回「原则 没有」——空白无法复盘，记录可以。`)
+    }
+
+    // 收尾一问：明天第一个动作
     const wrote = focus.filter(f => (f.content || '').trim() || (f.win || '').trim()).length
-    L.push(`\n③ 明天上班第一件事做什么？想清楚再关电脑。`)
-    if (wrote < 3) L.push(`（今日三向还差 ${3 - wrote} 个方向没写，回「三向」可以看提示）`)
+    L.push(`\n🌅 明天上班第一件事做什么？想清楚再关电脑。`)
+    if (wrote < 3) L.push(`（今日三向还差 ${3 - wrote} 个方向，回「三向」看提示）`)
 
     L.push(`\n———\n写完就关电脑。远程最耗人的是「永远没下班」。`)
   }

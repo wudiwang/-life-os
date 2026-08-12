@@ -198,10 +198,9 @@ async function markPrinciple(body) {
     : `✅ 原则落实已记：${body}`
 }
 
-async function markActions(nos) {
+async function markActions(nos, day = todayStr()) {
   const list = await activeActions()
   if (!list.length) return '还没有行为契约。去「人生 OKR」页设几条再来打卡。'
-  const day = todayStr()
   const hit = [], bad = [], dup = []
   for (const n of nos) {
     const a = list.find(x => x.no === n)
@@ -214,9 +213,10 @@ async function markActions(nos) {
     })
     hit.push(a.title)
   }
+  const isToday = day === todayStr()
   const out = []
-  if (hit.length) out.push(`✅ 打卡：${hit.join('、')}`)
-  if (dup.length) out.push(`（${dup.join('、')} 今天已经打过了）`)
+  if (hit.length) out.push(`✅ ${isToday ? '打卡' : `补打 ${day}`}：${hit.join('、')}`)
+  if (dup.length) out.push(`（${dup.join('、')} ${isToday ? '今天' : day} 已经打过了）`)
   if (bad.length) out.push(`没有编号 ${bad.join('、')}，回「打卡」看当前清单。`)
 
   // 顺手报本周进度，给一点进展感——焦虑的反面不是放松，是进展感
@@ -246,14 +246,143 @@ async function listActions() {
   return `📋 今日动作（回数字打卡，如「1」或「1 3」）：\n${lines.join('\n')}\n\n原则落实回「原则 今天它落在哪件事上」。`
 }
 
+// ── 快记提炼结果回流 ────────────────────────────────────────────
+// 提炼完不通知，结果就躺在 ai_jobs.result 里等人打开网页——而"不打开网页"
+// 正是整套推送要解决的问题。所以提炼完直接推 TG，回「好」就入库。
+const hhmm = () => new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false })
+const dayOf = iso => new Date(iso).toLocaleDateString('sv-SE')
+
+function renderRefine(job) {
+  const r = job.result || {}
+  const L = [`✨ 快记提炼好了（${dayOf(job.created_at)}）`]
+  if (r.comment) L.push(`\n${r.comment}`)
+  if (r.journal?.content) L.push(`\n📔 整理后的正文：\n${r.journal.content}`)
+  if (r.knowledge?.length) {
+    L.push(`\n🧠 要存的知识（${r.knowledge.length} 条）：`)
+    r.knowledge.forEach(k => L.push(`· [${k.category || '未分类'}] ${k.title}`))
+  }
+  if (r.todos?.length) {
+    L.push(`\n✅ 要建的待办（${r.todos.length} 条）：`)
+    r.todos.forEach(t => L.push(`· ${t.title}${t.due_date ? `（${t.due_date}）` : ''}`))
+  }
+  if (r.insight) {
+    L.push(r.insight.merge_into
+      ? `\n💡 命中老启示，计数 +1（不新建）`
+      : `\n💡 新启示：${r.insight.title}`)
+  }
+  L.push(`\n———\n回「好」全部入库 · 「只存日记」只要正文 · 「不用」丢弃`)
+  return L.join('\n')
+}
+
+// 复刻网页 applyDraft 的写库逻辑。TG 没有勾选框，所以是全存或全不存。
+async function applyRefine(job, journalOnly = false) {
+  const r = job.result || {}
+  const date = dayOf(job.created_at)
+  const line = `[${hhmm()}] ${String(r.journal?.content || '').trim()}`
+
+  const [entry] = await sb(`journal_entries?select=*&entry_date=eq.${date}`) || []
+  const extra = {}
+  if (r.journal?.mood && !entry?.mood) extra.mood = r.journal.mood
+  if (r.journal?.gratitude && !entry?.gratitude) extra.gratitude = r.journal.gratitude
+  if (entry) {
+    await sb(`journal_entries?id=eq.${entry.id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ content: (entry.content ? entry.content + '\n' : '') + line, ...extra }),
+    })
+  } else {
+    await sb('journal_entries', {
+      method: 'POST',
+      body: JSON.stringify({ entry_date: date, mood: null, gratitude: '', content: line, ...extra }),
+    })
+  }
+
+  let nk = 0, nt = 0, insightMsg = ''
+  if (!journalOnly) {
+    for (const k of r.knowledge || []) {
+      await sb('knowledge_notes', {
+        method: 'POST',
+        body: JSON.stringify({ title: k.title, category: k.category, tags: k.tags, content: k.content, source: '快记提炼' }),
+      })
+      nk++
+    }
+    for (const t of r.todos || []) {
+      await sb('work_todos', {
+        method: 'POST',
+        body: JSON.stringify({ title: t.title, priority: t.priority, due_date: t.due_date || null, status: 'open' }),
+      })
+      nt++
+    }
+
+    const now = new Date().toISOString()
+    const [thread] = r.thread_id ? (await sb(`journal_threads?select=*&id=eq.${r.thread_id}`) || []) : []
+    // 启示：命中老的只加计数（这就是去重），确实是新的才建一条
+    const [hit] = r.insight?.merge_into
+      ? (await sb(`insights?select=*&id=eq.${r.insight.merge_into}`) || []) : []
+    if (hit) {
+      await sb(`insights?id=eq.${hit.id}`, {
+        method: 'PATCH', body: JSON.stringify({ hits: (hit.hits || 1) + 1, updated_at: now }),
+      })
+      insightMsg = ` · 启示「${hit.title}」+1`
+    } else if (r.insight?.title) {
+      await sb('insights', {
+        method: 'POST',
+        body: JSON.stringify({
+          thread_id: thread?.id || null, title: r.insight.title, detail: r.insight.detail,
+          track: thread?.track || null, source_quote: String(job.input || '').slice(0, 120),
+          source_date: date, hits: 1, active: true,
+        }),
+      })
+      insightMsg = ' · 新启示 1 条'
+    }
+    if (thread) {
+      await sb(`journal_threads?id=eq.${thread.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ mention_count: (thread.mention_count || 0) + 1, last_noted_at: now }),
+      })
+    }
+  }
+
+  await patchJob(job.id, { status: 'applied' })
+  return `已存：日记 1 条${nk ? ` · 笔记 ${nk} 条` : ''}${nt ? ` · 待办 ${nt} 条` : ''}${insightMsg}`
+}
+
+const pendingRefines = () =>
+  sb('ai_jobs?select=*&status=eq.done&kind=eq.refine_note&order=created_at.asc')
+
 // 返回 null 表示不是打卡指令，交给 claude 正常处理
 async function quickCheckin(text) {
   const t = text.trim()
   try {
+    // 提炼结果确认。放在最前面：这几个词在待确认时就是确认，不该被 claude 兜走
+    if (/^(好|好的|确认|存|ok|OK|可以|行)$/.test(t) || /^(只存日记|只要日记)$/.test(t) || /^(不用|不要|算了|忽略|丢弃)$/.test(t)) {
+      const jobs = await pendingRefines()
+      if (!jobs?.length) return null // 没有待确认的，交给 claude 当普通对话
+      if (/^(不用|不要|算了|忽略|丢弃)$/.test(t)) {
+        for (const j of jobs) await patchJob(j.id, { status: 'dropped' })
+        return `丢掉了 ${jobs.length} 条提炼结果。原话还在库里，网页「看原话」找得到。`
+      }
+      const only = /^(只存日记|只要日记)$/.test(t)
+      const out = []
+      for (const j of jobs) out.push(await applyRefine(j, only))
+      return out.join('\n')
+    }
+
     const mp = t.match(/^(原则|落实)[\s:：]*(.+)$/s)
     if (mp) return await markPrinciple(mp[2].trim())
 
     if (t === '打卡' || t === '/today') return await listActions()
+
+    // 补打昨天：「昨 3」「昨天 3」。睡眠这类动作要在躺下那刻打卡，
+    // 但那时候人正要放下手机——为了打卡而摸手机，本身就在破坏这条动作的目的。
+    const my = t.match(/^(昨天?)[\s]*([\d\s,，、+]+)$/)
+    if (my) {
+      const nos = [...new Set(my[2].split(/[\s,，、+]+/).filter(Boolean).map(Number))].filter(n => n > 0)
+      if (nos.length) {
+        const d = new Date()
+        d.setDate(d.getDate() - 1)
+        return await markActions(nos, d.toLocaleDateString('sv-SE'))
+      }
+    }
 
     if (t === '三向' || t === '/focus') {
       const { FOCUS_TRACKS } = await import('../src/lib/constants.js')
@@ -368,6 +497,18 @@ async function runJob(job) {
   }
 }
 
+// 提炼好但还没通知过的，推给用户等一句「好」。
+// notified_at 防止 bot 每次重启就把老结果重推一遍。
+async function notifyRefines() {
+  if (!ALLOWED) return
+  const jobs = await sb('ai_jobs?select=*&status=eq.done&kind=eq.refine_note&notified_at=is.null&order=created_at.asc&limit=3')
+  for (const job of jobs || []) {
+    await reply(ALLOWED, renderRefine(job))
+    await patchJob(job.id, { notified_at: new Date().toISOString() })
+    console.log(`📨 提炼结果已推送 ${job.id.slice(0, 8)}`)
+  }
+}
+
 async function workerLoop() {
   if (!SB || !SB_KEY) {
     console.log('⚠️ .env 缺 Supabase 密钥，AI 提炼 worker 未启动')
@@ -384,6 +525,7 @@ async function workerLoop() {
         await runJob(jobs[0])
         continue
       }
+      await notifyRefines()
     } catch (e) {
       if (quiet++ % 20 === 0) console.error('worker 轮询出错（是否还没执行 supabase/v4_ai_jobs.sql？）：', e.message)
       wait = 15000
