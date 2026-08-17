@@ -1,8 +1,8 @@
-// 跨项目每日进度同步：让别的 Claude Code 项目自己把当天进展写进人生 OS，
+// 跨项目每日进度同步：让本机 Codex/Claude 项目大脑把当天进展写进人生 OS，
 // 不用用户再口述一遍（会漏、也啰嗦）。
 //
-// 链路：本机计划任务（每晚）→ 在目标项目目录里跑 claude -p（订阅额度，不花 API 钱）
-//      → 它读 git log / 改动 / 项目文档，产出结构化 JSON
+// 链路：本机计划任务（每晚）→ 在目标项目目录里跑 Codex Max（Claude 可选兜底）
+//      → 脚本先采集 git log / 改动量 / 工作区状态，纯文本大脑产出结构化 JSON
 //      → 本脚本校验后写入 daily_focus（每日三向的对应格子）+ journal_threads.next_action
 //      → TG 推一条摘要给用户
 //
@@ -15,9 +15,10 @@
 // 加新项目：往下面 PROJECTS 里加一条即可。
 
 import { readFileSync } from 'node:fs'
-import { spawn, execFileSync } from 'node:child_process'
+import { execFileSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
+import { runLocalBrain } from './local-brain.mjs'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 
@@ -83,7 +84,7 @@ function gitFacts(cwd, date) {
 }
 
 function buildPrompt(proj, date, facts, insightTitles) {
-  return `你现在在「${proj.name}」这个项目目录里（${proj.path}）。用户每天在这里用 Claude Code 做迭代和探索。
+  return `你现在在「${proj.name}」这个项目目录里（${proj.path}）。用户每天在这里用本机 Agent 做迭代和探索。
 
 你的任务：总结 **${date}** 这一天这个项目的真实进展，产出一份能直接进他「人生 OS」的日报。
 
@@ -98,10 +99,10 @@ ${facts.stat || '（无）'}
 ${facts.dirty || '（工作区干净）'}
 ${facts.diffstat ? `\n【未提交 diff 概览】\n${facts.diffstat}` : ''}
 
-## 你可以自己补充调查
+## 分析边界
 
-提交信息不足以说清"探索了什么"时，用工具去看：读当天改动的文件、看 CLAUDE.md / AGENTS.md 里的方法论约定、看 tests 里新增的用例说明验证了什么、看 research/ 或 docs/ 里的记录。
-重点不是"改了哪些代码"，而是**这一天在方法论上想明白了什么、验证了什么、推翻了什么**。
+只根据上面已经采集的客观事实判断，不调用工具、不自行浏览仓库。提交信息不足以支持的方法论结论就不写，绝不从文件名猜测成果。
+重点不是复述改了哪些代码，而是从提交说明和改动范围中提炼这一天明确验证、完成或推进了什么。
 
 ## 判定规则（重要）
 
@@ -127,24 +128,15 @@ ${insightTitles.length ? insightTitles.map(t => `- ${t}`).join('\n') : '（暂�
 insight 只在**这一天确实沉淀出可复用的方法论**时才给，否则填 null。全部中文。`
 }
 
-function claudeAsync(prompt, cwd, timeoutMs = 600000) {
-  return new Promise((resolve, reject) => {
-    const args = ['-p', '--model', 'opus',
-      '--allowedTools', '"Bash(git:*)"', '"Read"', '"Grep"', '"Glob"']
-    const p = spawn(`claude ${args.join(' ')}`, { shell: true, cwd })
-    let out = ''
-    let err = ''
-    const timer = setTimeout(() => { p.kill(); reject(new Error('claude 超时')) }, timeoutMs)
-    p.stdout.on('data', d => { out += d })
-    p.stderr.on('data', d => { err += d })
-    p.on('error', e => { clearTimeout(timer); reject(e) })
-    p.on('close', code => {
-      clearTimeout(timer)
-      if (code !== 0 || !out.trim()) reject(new Error(err.trim().slice(0, 300) || `exit ${code}`))
-      else resolve(out)
-    })
-    p.stdin.end(prompt)
-  })
+async function brainAsync(prompt, timeoutMs = 300000) {
+  const result = await runLocalBrain({
+    mode: 'text',
+    prompt,
+    timeout: Math.ceil(timeoutMs / 1000),
+    model: 'opus',
+  }, { timeoutMs: timeoutMs + 10000 })
+  log(`本机大脑：${result.provider}`)
+  return result.text
 }
 
 function parseDigest(stdout) {
@@ -267,7 +259,7 @@ async function syncOne(proj) {
     insightTitles = (rows || []).map(r => r.title)
   } catch { /* v7 未执行，无记忆也能跑 */ }
 
-  const d = parseDigest(await claudeAsync(buildPrompt(proj, DATE, facts, insightTitles), proj.path))
+  const d = parseDigest(await brainAsync(buildPrompt(proj, DATE, facts, insightTitles)))
 
   if (!d.active) {
     log('  · AI 判定当天无实质进展 → 不写入')

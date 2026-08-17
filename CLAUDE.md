@@ -50,20 +50,20 @@ git push origin main → Vercel 自动构建发布（约1-2分钟）
 
 ## AI 的三条路（IMPORTANT：网页/手机的 AI 一律走本机订阅，不走 API 计费）
 
-1. **队列（主路）**：网页/手机 → `ai_jobs` 表（status=pending）→ 本机 `npm run bot` 里的 worker 轮询取走 → `claude -p`（订阅额度）→ 结果写回 → 前端轮询拿到。
+1. **队列（主路）**：网页/手机 → `ai_jobs` 表（status=pending）→ 本机 `npm run bot` 里的 worker 轮询取走 → Codex Max（Claude CLI 可选兜底）→ 结果写回 → 前端轮询拿到。
    - 不需要内网穿透/公网 IP，手机在外网也能用；**前提是本机开着且 bot 在跑**，否则任务只是排队。
    - `kind` 区分活儿：`refine_note`（快记提炼，结果进 `ai_jobs.result` 等用户确认）、`health_advice`（体成分建议，直接写 `ai_reviews`）。新增 kind 在 `scripts/tg-bot.mjs` 的 `runJob` 里加分支。
    - 提示词与结果解析：`scripts/refine-prompt.mjs`。
-2. 命令行：`npm run ai [模块] [问题]`（scripts/ai-review-local.mjs）——同样走本机订阅，写回 ai_reviews。
+2. 命令行：`npm run ai [模块] [问题]`（scripts/ai-review-local.mjs）——同样走本机订阅，写回 ai_reviews（该旧入口未纳入本次计划任务迁移）。
 3. 在线（备用，默认没配）：AIPage → /api/ai-review，需 Vercel 配 CLAUDE_API_KEY。
 
 ## 跨项目每日进度同步（scripts/sync-project-progress.mjs）
 
-别的 Claude Code 项目（如 `C:\Users\ADMIN\trade` 交易系统）每天的迭代进展，由本机计划任务每晚自动汇总写回，用户不用再口述一遍。
+别的本机 Agent 项目（如 `C:\Users\ADMIN\trade` 交易系统）每天的迭代进展，由本机计划任务每晚自动汇总写回，用户不用再口述一遍。
 
 ```
 Windows 计划任务 life-os-daily-sync（每天 22:07）
-  → 在目标项目目录里跑 claude -p（订阅额度）：读 git log/未提交改动/项目文档
+  → 脚本先只读采集 git log/未提交改动/改动量，再交 Codex Max（Claude 可选兜底）做纯文本总结
   → 产出 JSON {active,summary,win,next_action,insight,highlights}
   → 写 daily_focus（对应 track 的格子）+ journal_threads.next_action + insights
   → TG 推一条摘要
@@ -90,7 +90,7 @@ Windows 计划任务 life-os-daily-sync（每天 22:07）
         回「原则 xxx」→ 写 principle_logs；回「打卡」看清单；回「三向」看提示词
 ```
 
-- 打卡必须走确定性快路：过 claude 要几十秒，那点延迟足以劝退打卡。自然语言打卡才交给 claude（SYSTEM 准则 12）。
+- 打卡必须走确定性快路：过大模型要几十秒，那点延迟足以劝退打卡。自然语言打卡才交给本机大脑（SYSTEM 准则 12）。
 - 动作编号 = `weekly_actions` 中 active 行按 `sort_order` 的序号，简报与打卡两边一致，不随消息变化。
 - 计划任务：`scripts/install-daily-brief.ps1`（`-Morning`/`-Evening` 改时间、`-Uninstall` 移除）。同样必须存成 **UTF-8 with BOM**。
 - 手动试推：`npm run brief -- --morning --dry`。

@@ -1,14 +1,14 @@
 // 「大仙」Telegram 机器人：人生 OS 的对话入口
-// 链路：TG 长轮询收消息 → 本机 Claude Code（订阅）作为大脑 → scripts/db.mjs 读写 Supabase → 回复 TG
+// 链路：TG 长轮询收消息 → 本机 Codex Max（Claude 可选兜底）→ scripts/db.mjs 读写 Supabase → 回复 TG
 // 用法：npm run bot   （Ctrl+C 停止）
 // .env 需要：TELEGRAM_BOT_TOKEN（BotFather 的 token）、TG_ALLOWED_CHAT_ID（你的 chat id，首次运行时会打印）
-// 会话延续：每个 chat 的 Claude session id 存在 scripts/.tg-session.json；TG 里发 /new 可开启新会话。
+// 会话延续：每个 chat 的 provider-qualified session id 存在 scripts/.tg-session.json；TG 里发 /new 可开启新会话。
 
 import { readFileSync, writeFileSync, existsSync } from 'node:fs'
-import { spawnSync, spawn } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 import { buildRefinePrompt, parseRefineResult } from './refine-prompt.mjs'
+import { runLocalBrain, runLocalBrainSync } from './local-brain.mjs'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const SESSION_FILE = join(root, 'scripts', '.tg-session.json')
@@ -89,28 +89,27 @@ okr_objectives(level:year/quarter,period,title,track,why,metric,metric_target,me
 13. 他现在是远程项目经理，最大的压力源是"远程工作的价值不可见"。当他表达工作焦虑时，别只安慰——把话题引到"这周的可见交付物做了没有"（周报、项目过账），那才是这类焦虑的正面战场。`
 
 function askClaude(chatId, userText) {
-  const sid = sessions[chatId]
-  const args = ['-p', '--output-format', 'json',
-    '--model', 'opus',  // 大脑锁定最新 Opus（当前 4.8），思考档位走 CC 默认 xhigh
-    '--allowedTools', '"Bash(node scripts/db.mjs:*)"', '"Read"', '"Grep"', '"Glob"', '"WebFetch"', '"WebSearch"']
-  if (sid) args.push('--resume', sid)
+  let sid = sessions[chatId]
+  if (sid && !sid.includes(':')) sid = `claude:${sid}`
   const today = new Date().toLocaleDateString('sv-SE')
   const prompt = sid
     ? `（今天是 ${today}）${userText}`
     : `${SYSTEM}\n\n（今天是 ${today}）用户说：${userText}`
-  const r = spawnSync(`claude ${args.join(' ')}`, {
-    input: prompt, encoding: 'utf8', shell: true, cwd: root, timeout: 600000,
-  })
-  if (r.status !== 0 || !r.stdout?.trim()) {
-    console.error('claude 调用失败：', (r.stderr || '').slice(0, 500))
-    return { text: '（大脑开小差了，稍后再试，或看电脑控制台日志）' }
-  }
   try {
-    const out = JSON.parse(r.stdout)
-    if (out.session_id) { sessions[chatId] = out.session_id; saveSessions() }
-    return { text: out.result || '（空回复）' }
-  } catch {
-    return { text: r.stdout.trim().slice(0, 3800) }
+    const result = runLocalBrainSync({
+      mode: 'agent_workspace',
+      prompt,
+      workdir: root,
+      session_id: sid || null,
+      timeout: 600,
+      model: 'opus',
+    }, { timeoutMs: 610000 })
+    if (result.sessionId) { sessions[chatId] = result.sessionId; saveSessions() }
+    console.log(`🧠 本机大脑：${result.provider}`)
+    return { text: result.text }
+  } catch (error) {
+    console.error('本机大脑调用失败：', error.message)
+    return { text: '（大脑开小差了，稍后再试，或看电脑控制台日志）' }
   }
 }
 
@@ -156,7 +155,7 @@ async function handleMessage(msg) {
   await reply(chatId, answer)
 }
 
-// ── 本机 AI worker：网页/手机把快记原文丢进 ai_jobs，这里取走跑 claude -p，结果写回 ──
+// ── 本机 AI worker：网页/手机把快记原文丢进 ai_jobs，这里取走跑本机大脑，结果写回 ──
 // 走订阅额度，不花 API 钱；不需要内网穿透，手机在外网也能用。前提：本机开着且这个进程在跑。
 const SB = env.VITE_SUPABASE_URL
 const SB_KEY = env.VITE_SUPABASE_ANON_KEY
@@ -171,7 +170,7 @@ async function sb(path, init = {}) {
 
 // ── TG 里直接打卡：不过 claude，回一个数字就入库，零等待 ──────────────
 // 每多一步跳转，执行率就掉一半。所以打卡必须便宜到「回一个字符」。
-// 走 claude 要几十秒，那点延迟足以让人放弃打卡，所以这条路必须是确定性的。
+// 走大模型要几十秒，那点延迟足以让人放弃打卡，所以这条路必须是确定性的。
 const todayStr = () => new Date().toLocaleDateString('sv-SE')
 
 // 编号 = active 动作按 sort_order 的序号，与早晚简报里的编号一致且不随消息变化
@@ -402,23 +401,14 @@ async function quickCheckin(text) {
   return null
 }
 
-// 异步跑 claude（不用 spawnSync，避免卡住 TG 长轮询）
-function claudeAsync(prompt, timeoutMs = 300000) {
-  return new Promise((resolve, reject) => {
-    const p = spawn('claude -p', { shell: true, cwd: root })
-    let out = ''
-    let err = ''
-    const timer = setTimeout(() => { p.kill(); reject(new Error('claude 超时')) }, timeoutMs)
-    p.stdout.on('data', d => { out += d })
-    p.stderr.on('data', d => { err += d })
-    p.on('error', e => { clearTimeout(timer); reject(e) })
-    p.on('close', code => {
-      clearTimeout(timer)
-      if (code !== 0 || !out.trim()) reject(new Error(err.trim().slice(0, 300) || `exit ${code}`))
-      else resolve(out)
-    })
-    p.stdin.end(prompt)
-  })
+async function brainAsync(prompt, timeoutMs = 300000) {
+  const result = await runLocalBrain({
+    mode: 'text',
+    prompt,
+    timeout: Math.ceil(timeoutMs / 1000),
+  }, { timeoutMs: timeoutMs + 10000 })
+  console.log(`🧠 本机大脑：${result.provider}`)
+  return result.text
 }
 
 const patchJob = (id, data) =>
@@ -473,11 +463,11 @@ async function runJob(job) {
   console.log(`🧪 任务 ${job.id.slice(0, 8)} [${kind}]：${job.input.slice(0, 40).replace(/\n/g, ' ')}...`)
   try {
     if (kind === 'health_advice') {
-      const content = (await claudeAsync(healthPrompt(job.input, job.context))).trim()
+      const content = (await brainAsync(healthPrompt(job.input, job.context))).trim()
       // 健康建议直接进 ai_reviews，网页/手机的「健康 → 体成分」和「AI 分析」都能看到
       await sb('ai_reviews', {
         method: 'POST',
-        body: JSON.stringify({ module: 'health', prompt_summary: job.context || '体成分分析（本机 Claude）', content }),
+        body: JSON.stringify({ module: 'health', prompt_summary: job.context || '体成分分析（本机 AI）', content }),
       })
       await patchJob(job.id, { status: 'done', error: null, finished_at: new Date().toISOString() })
       console.log(`💪 健康建议已生成（${content.length} 字）`)
@@ -485,7 +475,7 @@ async function runJob(job) {
     }
 
     const memory = await loadMemory()
-    const result = parseRefineResult(await claudeAsync(buildRefinePrompt(job.input, job.context, memory)))
+    const result = parseRefineResult(await brainAsync(buildRefinePrompt(job.input, job.context, memory)))
     await patchJob(job.id, { status: 'done', result, error: null, finished_at: new Date().toISOString() })
     const dedup = result.insight?.merge_into
       ? ' / 命中老启示，合并计数'
@@ -514,7 +504,7 @@ async function workerLoop() {
     console.log('⚠️ .env 缺 Supabase 密钥，AI 提炼 worker 未启动')
     return
   }
-  console.log('⚙️ AI 提炼 worker 已启动（轮询 ai_jobs，走本机 Claude 订阅）')
+  console.log('⚙️ AI 提炼 worker 已启动（轮询 ai_jobs，走本机 Codex Max / Claude 兜底）')
   let quiet = 0 // 建表前会一直报错，降噪：连续失败时拉长间隔、少刷屏
   for (;;) {
     let wait = 3000
