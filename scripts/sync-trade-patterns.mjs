@@ -178,11 +178,15 @@ async function main() {
           findWrittenArchive: async draftId => {
             const entries = await readdir(archiveRootReal, { withFileTypes: true })
             for (const entry of entries.filter(item => item.isDirectory() && /^\d+-/.test(item.name))) {
-              const ideaCandidate = join(await existingDirectoryInside(archiveRootReal, entry.name), 'idea.md')
-              if (!await exists(ideaCandidate)) continue
-              const ideaPath = await existingFileInside(archiveRootReal, ideaCandidate)
-              const markdown = await readFile(ideaPath, 'utf8')
-              if (parseFrontMatter(markdown).meta.life_os_id === draftId) return entry.name
+              try {
+                const ideaCandidate = join(await existingDirectoryInside(archiveRootReal, entry.name), 'idea.md')
+                if (!await exists(ideaCandidate)) continue
+                const ideaPath = await existingFileInside(archiveRootReal, ideaCandidate)
+                const markdown = await readFile(ideaPath, 'utf8')
+                if (parseFrontMatter(markdown).meta.life_os_id === draftId) return entry.name
+              } catch (error) {
+                console.warn(`恢复索引跳过 ${entry.name}：${error.message}`)
+              }
             }
             return null
           },
