@@ -5,6 +5,7 @@ dist
 *.local
 .DS_Store
 .vercel
+.worktrees/
 scripts/.tg-session.json
 migration/
 scripts/.bot.lock
