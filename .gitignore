@@ -9,3 +9,6 @@ dist
 scripts/.tg-session.json
 migration/
 scripts/.bot.lock
+
+.vercel
+.env*
