@@ -2,11 +2,14 @@ import { allocateSourceKey } from './trade-patterns-core.mjs'
 
 export async function syncPullRecord(deps, source) {
   const existing = await deps.findPattern(source.source_key)
+  const { updates = [], ...pattern } = source
   if (existing?.source_hash === source.source_hash) {
+    for (const update of updates) {
+      await deps.upsertUpdate({ ...update, pattern_id: existing.id })
+    }
     return { status: 'unchanged', pattern_id: existing.id }
   }
 
-  const { updates = [], ...pattern } = source
   const saved = await deps.upsertPattern(pattern)
   for (const update of updates) {
     await deps.upsertUpdate({ ...update, pattern_id: saved.id })
@@ -17,6 +20,20 @@ export async function syncPullRecord(deps, source) {
 
 export async function syncPushRecord(deps, draft) {
   try {
+    const recovered = await deps.findWrittenArchive?.(draft.id)
+    if (recovered) {
+      if (deps.recoverPattern) await deps.recoverPattern(draft.id, recovered)
+      else {
+      await deps.patchPattern(draft.id, {
+          source_key: recovered,
+          source_path: `research/ideas/${recovered}`,
+          sync_state: 'synced',
+        sync_error: null,
+        created_via: 'life_os',
+        })
+      }
+      return { source_key: recovered }
+    }
     const directories = await deps.listDirectories()
     const sourceKey = allocateSourceKey(directories, draft.title)
     const id = sourceKey.match(/^(\d+)/)?.[1]
@@ -36,6 +53,7 @@ export async function syncPushRecord(deps, draft) {
       source_path: `research/ideas/${sourceKey}`,
       sync_state: 'synced',
       sync_error: null,
+      created_via: 'life_os',
     })
 
     return { source_key: sourceKey }

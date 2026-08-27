@@ -8,7 +8,11 @@ const STATUS_MAP = {
 }
 
 function cleanScalar(value = '') {
-  return String(value).trim().replace(/^['"]|['"]$/g, '')
+  const text = String(value).trim()
+  if (text.startsWith('"') && text.endsWith('"')) {
+    try { return JSON.parse(text) } catch { /* 兼容旧档案 */ }
+  }
+  return text.replace(/\s+#.*$/, '').replace(/^['"]|['"]$/g, '')
 }
 
 export function parseFrontMatter(markdown) {
@@ -20,7 +24,12 @@ export function parseFrontMatter(markdown) {
     if (!pair) continue
     const [, key, raw] = pair
     if (/^\[.*\]$/.test(raw.trim())) {
-      meta[key] = raw.trim().slice(1, -1).split(',').map(cleanScalar).filter(Boolean)
+      try {
+        const parsed = JSON.parse(raw.trim())
+        meta[key] = Array.isArray(parsed) ? parsed : []
+      } catch {
+        meta[key] = raw.trim().slice(1, -1).split(',').map(cleanScalar).filter(Boolean)
+      }
     } else {
       meta[key] = cleanScalar(raw)
     }
@@ -63,10 +72,15 @@ function plainSection(value) {
 
 export function parseIdea(markdown, sourceKey) {
   const { meta, body } = parseFrontMatter(markdown)
-  const originalRaw = section(body, ['用户原话', '操作思路原话', '出发点（用户原话'])
+  const originalRaw = [
+    section(body, ['用户原话']),
+    section(body, ['用户后续澄清']),
+    section(body, ['操作思路原话']),
+    section(body, ['出发点（用户原话']),
+  ].filter(Boolean).map(quoteText).filter(Boolean).join('\n\n')
   const observations = section(body, ['图中可见事实', '这张图发生了什么'])
-  const hypotheses = section(body, ['待验证形态假设', '已确认假设', '假设（要验证的东西）', '定义（'])
-  const pending = section(body, ['待定项', '仍待明确'])
+  const hypotheses = section(body, ['待验证形态假设', '已确认假设', '已确认口径', '假设（要验证的东西）', '定义（'])
+  const pending = section(body, ['待定项', '仍待明确', '研究问题'])
   const image = body.match(/!\[[^\]]*\]\(([^)]+)\)/)
   const status = STATUS_MAP[meta.status] || (['idea', 'researching', 'validated', 'invalidated', 'archived'].includes(meta.status) ? meta.status : 'idea')
   return {
@@ -75,12 +89,14 @@ export function parseIdea(markdown, sourceKey) {
     pattern_type: meta.type || 'case',
     status,
     origin_date: meta.origin_date || null,
+    symbol: meta.symbol || meta.origin_symbol || null,
+    timeframe: meta.timeframe || meta.origin_tf || null,
     tags: Array.isArray(meta.tags) ? meta.tags : [],
-    original_quote: quoteText(originalRaw),
+    original_quote: originalRaw,
     observations: plainSection(observations),
     hypotheses: plainSection(hypotheses),
     pending_questions: plainSection(pending),
-    image_path: image?.[1] || '',
+    image_path: image?.[1] || meta.origin_chart || '',
     raw_markdown: String(markdown),
   }
 }
@@ -88,15 +104,15 @@ export function parseIdea(markdown, sourceKey) {
 export function parseTimeline(markdown) {
   const rows = []
   for (const item of splitSections(String(markdown))) {
-    const match = item.heading.match(/^(\d{4}-\d{2}-\d{2})\s*[·・—-]\s*(.+)$/)
+    const match = item.heading.match(/^(\d{4}-\d{2}-\d{2})(?:\s+(\d{2}:\d{2}))?\s*[·・—-]\s*(.+)$/)
     if (!match) continue
     const content = item.content.trim()
     rows.push({
-      event_date: match[1], title: match[2].trim(), content,
+      event_date: match[1], title: `${match[2] ? `${match[2]} · ` : ''}${match[3].trim()}`, content,
       update_type: /证伪/.test(item.heading + content) ? 'invalidation'
         : /回测/.test(item.heading + content) ? 'backtest'
           : /验证|确认/.test(item.heading + content) ? 'validation' : 'note',
-      source_hash: contentHash(`${match[1]}\n${match[2]}\n${content}`),
+      source_hash: contentHash(`${match[1]}\n${match[2] || ''}\n${match[3]}\n${content}`),
     })
   }
   return rows.sort((a, b) => String(b.event_date).localeCompare(String(a.event_date)))
@@ -104,6 +120,58 @@ export function parseTimeline(markdown) {
 
 export function contentHash(value) {
   return createHash('sha256').update(String(value), 'utf8').digest('hex')
+}
+
+const DATABASE_PATTERN_FIELDS = [
+  'source_key', 'source_project', 'title', 'pattern_type', 'status', 'origin_date',
+  'direction', 'symbol', 'timeframe', 'tags', 'original_quote', 'observations',
+  'hypotheses', 'pending_questions', 'image_url', 'source_path', 'source_hash',
+  'sync_state', 'sync_error', 'created_via',
+]
+
+export function toDatabasePattern(source) {
+  return Object.fromEntries(DATABASE_PATTERN_FIELDS
+    .filter(field => Object.hasOwn(source, field))
+    .map(field => [field, source[field]]))
+}
+
+export function validateImageDownloadUrl(candidate, supabaseUrl) {
+  let target
+  let project
+  try {
+    target = new URL(candidate)
+    project = new URL(supabaseUrl)
+  } catch {
+    throw new Error('截图地址不允许：URL 无效')
+  }
+  const allowedPrefix = '/storage/v1/object/public/attachments/'
+  if (target.protocol !== 'https:' || target.origin !== project.origin ||
+      target.username || target.password || !target.pathname.startsWith(allowedPrefix)) {
+    throw new Error('截图地址不允许：只接受本项目 attachments 公共桶')
+  }
+  return target
+}
+
+export async function readResponseBodyLimited(response, maxBytes) {
+  if (!response.body) throw new Error('截图响应没有内容')
+  const reader = response.body.getReader()
+  const chunks = []
+  let total = 0
+  try {
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+      total += value.byteLength
+      if (total > maxBytes) {
+        await reader.cancel()
+        throw new Error(`截图超过 ${maxBytes}B 限制`)
+      }
+      chunks.push(Buffer.from(value))
+    }
+  } finally {
+    reader.releaseLock()
+  }
+  return Buffer.concat(chunks, total)
 }
 
 function slugify(title) {
@@ -136,16 +204,16 @@ function blockquote(value) {
 }
 
 export function renderIdea(record) {
-  const tags = Array.isArray(record.tags) ? record.tags.join(', ') : ''
   const image = record.image_filename
     ? `\n## 原始截图\n\n![原始形态](assets/${record.image_filename})\n` : ''
   return `---
 id: ${record.id}
-title: ${record.title}
-type: ${record.pattern_type || 'case'}
+life_os_id: ${JSON.stringify(record.life_os_id || '')}
+title: ${JSON.stringify(record.title)}
+type: ${JSON.stringify(record.pattern_type || 'case')}
 status: 灵感收藏
 origin_date: ${record.origin_date}
-tags: [${tags}]
+tags: ${JSON.stringify(Array.isArray(record.tags) ? record.tags : [])}
 ---
 
 ## 用户原话（${record.origin_date}）

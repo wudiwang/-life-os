@@ -176,7 +176,7 @@ export function TradePatternsPage() {
               </div>
             ) : <div style={{ color: COLORS.textLight }}>暂无研究更新</div>}
           </Section>
-          {selected.sync_state !== 'synced' && selected.created_via === 'life_os' && (
+          {selected.sync_state !== 'synced' && selected.created_via === 'life_os_uploading' && (
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 16 }}>
               <IconBtn color={COLORS.red} onClick={async () => {
                 if (!window.confirm('只删除尚未写回交易项目的草稿，确认删除？')) return
@@ -209,14 +209,38 @@ export function TradePatternsPage() {
             disabled={saving || !draft.image_file || (!draft.title.trim() && !draft.original_quote.trim())}
             onSubmit={async () => {
               setSaving(true)
+              let recordId = draft.record_id
+              let imageUrl = draft.uploaded_url
               try {
-                const imageUrl = await uploadFile(draft.image_file)
-                const date = beijingDate()
-                const row = normalizeDraft({ ...draft, image_url: imageUrl }, crypto.randomUUID(), date)
+                const date = draft.origin_date || beijingDate()
+                const webUuid = draft.web_uuid || crypto.randomUUID()
+                const row = normalizeDraft({ ...draft, image_url: null }, webUuid, date)
                 if (!row.title) row.title = excerpt(row.original_quote.trim().replace(/\s+/g, ' '), 32) || `未命名形态 · ${date}`
-                await patterns.add(row)
+                if (!recordId) {
+                  const saved = await patterns.add({ ...row, created_via: 'life_os_uploading' })
+                  recordId = saved.id
+                  setDraft(current => ({ ...current, record_id: recordId, web_uuid: webUuid, origin_date: date }))
+                }
+                if (!imageUrl) {
+                  imageUrl = await uploadFile(draft.image_file)
+                  setDraft(current => ({ ...current, uploaded_url: imageUrl }))
+                  await patterns.patch(recordId, { image_url: imageUrl })
+                }
+                await patterns.patch(recordId, {
+                  ...row, image_url: imageUrl, created_via: 'life_os',
+                  sync_state: 'pending_writeback', sync_error: null,
+                })
                 setDraft(null)
                 showToast('已收藏，等待本地同步写回交易研究档案')
+              } catch (error) {
+                if (recordId) {
+                  try {
+                    await patterns.patch(recordId, {
+                      sync_state: 'sync_error', sync_error: error.message,
+                    })
+                  } catch { /* useTable 已显示数据库错误 */ }
+                }
+                showToast(`保存未完成：${error.message}`, 'error')
               } finally {
                 setSaving(false)
               }
