@@ -11,11 +11,13 @@ import { KnowledgePage } from './Knowledge/KnowledgePage'
 import { RelationsPage } from './Relations/RelationsPage'
 import { JournalPage } from './Journal/JournalPage'
 import { OKRPage } from './OKR/OKRPage'
+import { TradePatternsPage } from './TradePatterns/TradePatternsPage'
 
 export const PAGES = {
   dashboard: DashboardPage,
   okr: OKRPage,
   journal: JournalPage,
+  tradePatterns: TradePatternsPage,
   health: HealthPage,
   habits: HabitsPage,
   goals: GoalsPage,
