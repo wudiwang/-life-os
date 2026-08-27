@@ -32,6 +32,14 @@ export const NAV_ITEMS = [
   { key: 'settings', label: '设置', icon: '⚙️' },
 ]
 
+export const TRADE_PATTERN_STATUS = [
+  { key: 'idea', label: '灵感收藏', color: COLORS.gray },
+  { key: 'researching', label: '研究中', color: COLORS.primary },
+  { key: 'validated', label: '已形成规律', color: COLORS.green },
+  { key: 'invalidated', label: '已证伪', color: COLORS.red },
+  { key: 'archived', label: '已归档', color: COLORS.orange },
+]
+
 export const PAGE_TITLES = Object.fromEntries(NAV_ITEMS.map(i => [i.key, `${i.icon} ${i.label}`]))
 
 // 健康指标类型定义
@@ -186,6 +194,7 @@ export const ALL_TABLES = [
   'ai_jobs', 'blood_metrics', 'daily_focus',
   'journal_threads', 'insights',
   'okr_objectives', 'weekly_actions', 'weekly_action_logs', 'principle_logs',
+  'trade_patterns', 'trade_pattern_updates',
 ]
 
 // OKR 层级。结果指标只在回顾时看，每日/每周只考核 weekly_actions 的动作完成度。
