@@ -26,6 +26,7 @@ git push origin main → Vercel 自动构建发布（约1-2分钟）
 | 人生看板 | Dashboard/DashboardPage | **核心原则 + 每日落实**(PrincipleCard，principle_logs) + **本周行为契约**(WeeklyActionsCard) + **每日三向**(DailyFocusCard，daily_focus) + 今日概览 + 人生阶段面板(life_stage) + 检查点提醒 |
 | 人生 OKR | OKR/OKRPage | 年度/季度 Objective(okr_objectives) + 拆出的每周行为契约(weekly_actions)。**结果指标只在回顾时看，每日只考核动作做没做**——个人自定 KPI 裁判即运动员，用结果指标每天自评必然放水或弃疗 |
 | 每日一记 | Journal/JournalPage | 快记(AI 提炼后确认入库) + **启示条**(InsightBar，insights 表) + **主线面板**(ThreadsPanel，journal_threads 表) + 心情(1-5)/感恩/心情曲线 + 按天折叠的笔记流 |
+| 交易形态库 | TradePatterns/TradePatternsPage | 交易项目 `research/ideas` 的云端镜像：原图/原话、事实、规律、待定项、研究时间线；网页新增进入待写回队列 |
 | 健康 | Health/HealthPage | 4 tabs：体成分(BodyTab)/血液检查(BloodTab)/指标记录/体检报告；指标定义在 constants 的 METRIC_TYPES、BODY_METRICS、BLOOD_PANEL |
 | 习惯 | Habits/HabitsPage | 7天打卡网格 + streak；habit_logs 以 (habit_id, log_date) 判打卡 |
 | 目标 | Goals/GoalsPage | 目标卡片 + 详情弹窗(里程碑/检查点自检/过程记录/复盘) |
@@ -37,6 +38,13 @@ git push origin main → Vercel 自动构建发布（约1-2分钟）
 | 设置 | Settings/SettingsPage | 连接状态/JSON 备份导出/清空演示数据 |
 
 新增页面需要：写页面组件 + 在 `src/pages/registry.js` 登记 + `src/lib/constants.js` 的 NAV_ITEMS 加菜单项。
+
+## 交易形态库双向同步
+
+- 交易项目 `C:\Users\ADMIN\trade\research\ideas` 是唯一研究档案源；人生 OS 的 `trade_patterns` / `trade_pattern_updates` 只作公网镜像和待写回队列。
+- `npm run sync:patterns -- --pull-only` 导入/更新本地档案，`--push-only` 把网页草稿安全写回，`--dry` 只统计。
+- 同步按 `source_key` 和内容哈希幂等，用户原话与归纳规律分字段保存；不得把网页记录直接转成策略或下单规则。
+- 新表迁移：`supabase/v10_trade_patterns.sql`。
 
 ## 数据层
 
