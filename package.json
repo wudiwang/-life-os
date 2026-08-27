@@ -13,7 +13,9 @@
     "bot:once": "node scripts/tg-bot.mjs",
     "sync": "node scripts/sync-project-progress.mjs",
     "brief": "node scripts/daily-brief.mjs",
-    "sql": "node scripts/run-sql.mjs"
+    "sql": "node scripts/run-sql.mjs",
+    "sync:patterns": "node scripts/sync-trade-patterns.mjs",
+    "test:patterns": "node --test scripts/trade-patterns-core.test.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.103.0",

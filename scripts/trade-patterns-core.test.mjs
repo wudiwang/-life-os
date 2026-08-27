@@ -10,6 +10,7 @@ import {
   renderIdea,
   resolveInside,
 } from './trade-patterns-core.mjs'
+import { syncPullRecord, syncPushRecord } from './trade-patterns-sync.mjs'
 
 const IDEA_MD = `---
 id: 007
@@ -90,4 +91,56 @@ test('renderIdea preserves exact original quote and does not turn it into a rule
 test('contentHash is deterministic and changes with content', () => {
   assert.equal(contentHash('same'), contentHash('same'))
   assert.notEqual(contentHash('same'), contentHash('different'))
+})
+
+test('sync pull is idempotent by source key and hash', async () => {
+  const saved = new Map()
+  const updates = new Set()
+  const deps = {
+    findPattern: async key => saved.get(key) || null,
+    upsertPattern: async row => { saved.set(row.source_key, { id: 'p1', ...row }); return saved.get(row.source_key) },
+    upsertUpdate: async row => { updates.add(`${row.pattern_id}:${row.source_hash}`) },
+  }
+  const source = { source_key: '007-demo', source_hash: 'hash', title: 'Demo', updates: [
+    { source_hash: 'u1', title: '收藏', content: '内容' },
+  ] }
+  assert.deepEqual(await syncPullRecord(deps, source), { status: 'synced', pattern_id: 'p1' })
+  assert.deepEqual(await syncPullRecord(deps, source), { status: 'unchanged', pattern_id: 'p1' })
+  assert.equal(saved.size, 1)
+  assert.equal(updates.size, 1)
+})
+
+test('sync push writes one archive and marks draft synced', async () => {
+  const patches = []
+  const written = []
+  const deps = {
+    listDirectories: async () => ['001-old', '007-last'],
+    downloadImage: async () => ({ bytes: Buffer.from('jpg'), extension: 'jpg' }),
+    writeArchive: async value => { written.push(value) },
+    patchPattern: async (id, patch) => { patches.push({ id, patch }) },
+  }
+  const result = await syncPushRecord(deps, {
+    id: 'draft', source_key: 'web-draft', sync_state: 'pending_writeback',
+    title: '弱反弹续跌', origin_date: '2026-08-27', original_quote: '原话',
+    image_url: 'https://example.test/image.jpg', tags: [],
+  })
+  assert.equal(result.source_key, '008-idea')
+  assert.equal(written.length, 1)
+  assert.equal(patches.at(-1).patch.sync_state, 'synced')
+})
+
+test('sync push failure preserves draft and records error', async () => {
+  const patches = []
+  const deps = {
+    listDirectories: async () => [],
+    downloadImage: async () => { throw new Error('图片下载失败') },
+    writeArchive: async () => assert.fail('must not write archive'),
+    patchPattern: async (id, patch) => { patches.push({ id, patch }) },
+  }
+  await assert.rejects(() => syncPushRecord(deps, {
+    id: 'draft', sync_state: 'pending_writeback', title: '测试',
+    origin_date: '2026-08-27', image_url: 'bad', tags: [],
+  }), /图片下载失败/)
+  assert.equal(patches.at(-1).patch.sync_state, 'sync_error')
+  assert.match(patches.at(-1).patch.sync_error, /图片下载失败/)
 })
