@@ -19,6 +19,7 @@ export const COLORS = {
 
 export const NAV_ITEMS = [
   { key: 'dashboard', label: '人生看板', icon: '🏠' },
+  { key: 'overview', label: '生活概览', icon: '🌱' },
   { key: 'okr', label: '人生 OKR', icon: '🧗' },
   { key: 'journal', label: '每日一记', icon: '📔' },
   { key: 'tradePatterns', label: '交易形态库', icon: '📐' },

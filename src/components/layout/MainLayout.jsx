@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Sidebar, NavContent } from './Sidebar'
 import { PAGE_TITLES, COLORS } from '../../lib/constants'
 import { useUIStore } from '../../store/useUIStore'
@@ -36,6 +36,8 @@ export function MainLayout({ children }) {
   const currentPage = useUIStore(s => s.currentPage)
   const isMobile = useIsMobile()
   const [drawerOpen, setDrawerOpen] = useState(false)
+
+  useEffect(() => { window.scrollTo(0, 0) }, [currentPage])
 
   if (isMobile) {
     return (

@@ -12,3 +12,4 @@ scripts/.bot.lock
 
 .vercel
 .env*
+sync-projects.local.json

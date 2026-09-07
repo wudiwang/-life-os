@@ -19,19 +19,13 @@ import { execFileSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 import { runLocalBrain } from './local-brain.mjs'
+import { loadProjects } from './project-sync-config.mjs'
+import { replaceDigestBlock } from '../src/lib/controlCenter.js'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 
 // ── 要同步的项目 ────────────────────────────────────────────
-const PROJECTS = [
-  {
-    key: 'trade',
-    name: '交易系统',
-    path: 'C:\\Users\\ADMIN\\trade',
-    track: 'trade',        // 写进「每日三向」的哪一格：work/trade/life
-    threadMatch: '交易',    // 主线标题包含此词 → 更新它的「下一步」
-  },
-]
+const PROJECTS = loadProjects(root)
 
 // ── 参数 ────────────────────────────────────────────────
 const argv = process.argv.slice(2)
@@ -181,12 +175,12 @@ async function tgNotify(text) {
 
 // ── 写库：只覆盖自己那一段，绝不动用户手写的内容 ──
 async function writeBack(proj, date, d) {
-  const MARK = `—— ${proj.name} · 自动同步 ——`
-  const block = [MARK, d.summary, ...(d.highlights.length ? [d.highlights.map(h => `· ${h}`).join('\n')] : [])].join('\n')
+  const block = [d.summary, ...(d.highlights.length ? [d.highlights.map(h => `· ${h}`).join('\n')] : []),
+    d.next_action ? `下一步建议：${d.next_action}` : ''].filter(Boolean).join('\n')
 
   const [existing] = await sb(`daily_focus?log_date=eq.${date}&track=eq.${proj.track}`)
-  const manual = String(existing?.content || '').split(MARK)[0].trimEnd()
-  const content = [manual, block].filter(Boolean).join('\n\n')
+  const content = replaceDigestBlock(existing?.content, proj.name, block)
+  if (content === existing?.content) return { unchanged: true, note: '' }
   // 成果栏用户自己写过就不动，只在空着时替他填上
   const win = String(existing?.win || '').trim() || d.win
 
@@ -206,13 +200,14 @@ async function writeBack(proj, date, d) {
   let threadNote = ''
   try {
     const threads = await sb(`journal_threads?track=eq.${proj.track}&status=eq.active&order=sort_order.asc`)
-    const th = (threads || []).find(t => t.title.includes(proj.threadMatch)) || (threads || [])[0]
-    if (th && d.next_action) {
+    const matches = (threads || []).filter(t => proj.threadId ? t.id === proj.threadId
+      : proj.threadMatch && t.title.includes(proj.threadMatch))
+    const th = matches.length === 1 ? matches[0] : null
+    if (th && d.next_action && !String(th.next_action || '').trim()) {
       await sb(`journal_threads?id=eq.${th.id}`, {
         method: 'PATCH',
         body: JSON.stringify({
           next_action: d.next_action,
-          mention_count: (th.mention_count || 0) + 1,
           last_noted_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         }),
@@ -226,19 +221,21 @@ async function writeBack(proj, date, d) {
   let insightNote = ''
   if (d.insight) {
     try {
-      await sb('insights', {
+      const query = new URLSearchParams({ select: 'id', source_date: `eq.${date}`, source_quote: `eq.${proj.name} ${date} 自动同步`, title: `eq.${d.insight.title}` })
+      const duplicates = await sb(`insights?${query}`)
+      if (!duplicates.length) await sb('insights', {
         method: 'POST',
         body: JSON.stringify({
           title: d.insight.title, detail: d.insight.detail, track: proj.track,
           source_quote: `${proj.name} ${date} 自动同步`, source_date: date, hits: 1, active: true,
         }),
       })
-      insightNote = `\n💡 新启示：${d.insight.title}`
+      if (!duplicates.length) insightNote = `\n💡 新启示：${d.insight.title}`
     } catch (e) {
       log('启示写入跳过：', e.message)
     }
   }
-  return threadNote + insightNote
+  return { unchanged: false, note: threadNote + insightNote }
 }
 
 async function syncOne(proj) {
@@ -277,7 +274,7 @@ async function syncOne(proj) {
 
   const extra = await writeBack(proj, DATE, d)
   log('  ✓ 已写入 daily_focus')
-  await tgNotify(`📊 ${proj.name} · ${DATE} 进展已同步\n\n${d.summary}\n\n✨ ${d.win}\n▶ 下一步：${d.next_action}${extra}`)
+  if (!extra.unchanged) await tgNotify(`📊 ${proj.name} · ${DATE} 进展已同步\n\n${d.summary}\n\n✨ ${d.win}\n▶ 下一步建议：${d.next_action}${extra.note}`)
 }
 
 const targets = PROJECTS.filter(p => !ONLY || p.key === ONLY)

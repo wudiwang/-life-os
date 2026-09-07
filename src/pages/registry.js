@@ -1,5 +1,6 @@
 // 页面注册表：App.jsx 据此切换页面。新增页面在此登记。
 import { DashboardPage } from './Dashboard/DashboardPage'
+import { ControlCenterPage } from './Dashboard/ControlCenterPage'
 import { AIPage } from './AI/AIPage'
 import { SettingsPage } from './Settings/SettingsPage'
 import { HealthPage } from './Health/HealthPage'
@@ -14,7 +15,8 @@ import { OKRPage } from './OKR/OKRPage'
 import { TradePatternsPage } from './TradePatterns/TradePatternsPage'
 
 export const PAGES = {
-  dashboard: DashboardPage,
+  dashboard: ControlCenterPage,
+  overview: DashboardPage,
   okr: OKRPage,
   journal: JournalPage,
   tradePatterns: TradePatternsPage,
