@@ -189,7 +189,7 @@ export const MOODS = [
 export const ALL_TABLES = [
   'health_metrics', 'health_reports', 'habits', 'habit_logs',
   'goals', 'goal_milestones', 'goal_logs',
-  'work_todos', 'work_logs', 'work_profile', 'work_contacts',
+  'work_todos', 'todo_day_entries', 'work_logs', 'work_profile', 'work_contacts',
   'explore_records', 'knowledge_notes',
   'relation_people', 'relation_logs',
   'journal_entries', 'ai_reviews', 'life_stage',

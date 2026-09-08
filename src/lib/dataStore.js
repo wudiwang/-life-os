@@ -26,6 +26,15 @@ function matchFilters(row, filters) {
 export const isDemo = !hasSupabase
 
 export const db = {
+  async upsert(table, row, conflictKeys) {
+    if (!hasSupabase) {
+      const found = lsRead(table).find(item => conflictKeys.every(key => item[key] === row[key]))
+      return found ? db.update(table, found.id, row) : db.insert(table, row)
+    }
+    const { data, error } = await supabase.from(table).upsert(row, { onConflict: conflictKeys.join(',') }).select().single()
+    if (error) throw error
+    return data
+  },
   // opts: { orderBy, ascending, filters: {col: val}, limit }
   async list(table, opts = {}) {
     const { orderBy = 'created_at', ascending = false, filters, limit } = opts
