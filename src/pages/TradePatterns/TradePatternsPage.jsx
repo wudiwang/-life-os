@@ -14,6 +14,7 @@ import { uploadFile } from '../../lib/dataStore'
 import { fmtDate } from '../../lib/date'
 import { useUIStore } from '../../store/useUIStore'
 import { excerpt, filterPatterns, normalizeDraft, syncLabel } from './tradePatternUtils'
+import { TradePrinciples } from './TradePrinciples'
 
 const emptyDraft = {
   title: '', original_quote: '', symbol: '', timeframe: '', tags: '',
@@ -70,6 +71,8 @@ export function TradePatternsPage() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <TradePrinciples />
+
       {updates.missing && <TableMissing sql="v10_trade_patterns.sql" />}
 
       <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(5, minmax(120px, 1fr))', gap: 10 }}>
