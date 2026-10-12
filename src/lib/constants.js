@@ -175,6 +175,25 @@ export const THREAD_STATUS = [
 
 // 主线/启示归属的方向复用三向，另加一个兜底
 export const TRACK_OTHER = { key: 'other', label: '其他', short: '其他', icon: '📎', color: COLORS.gray }
+// 三大主线（用户 2026-10-13）：首页以此分组展示「项目 → 需求单 → 子任务」。
+// 刻意与 dailyActions.js 的 MAIN_LINES(按 track 分)分开：那个是控制台的边界说明，
+// 这个是 journal_threads.main_line 的分组定义，互不影响。
+export const THREE_LINES = [
+  {
+    key: 'manage', name: '领航项目管理', icon: '💼', color: COLORS.primary,
+    tagline: '让价值看得见', page: 'work',
+  },
+  {
+    key: 'health', name: '健康', icon: '❤️', color: COLORS.red,
+    tagline: '控热量 · 睡得够 · 动起来', page: 'health',
+  },
+  {
+    key: 'study', name: '学习', icon: '📚', color: COLORS.purple,
+    tagline: '英语 · 泰语 · 运营', page: 'knowledge',
+  },
+]
+export const lineOf = key => THREE_LINES.find(l => l.key === key)
+
 export const trackOf = key => FOCUS_TRACKS.find(t => t.key === key) || TRACK_OTHER
 
 export const MOODS = [

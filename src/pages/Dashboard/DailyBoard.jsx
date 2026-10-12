@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useTable } from '../../hooks/useTable'
 import { db, isDemo } from '../../lib/dataStore'
 import { bangkokDay, actionsForDay, MAIN_LINES } from '../../lib/dailyActions'
+import { MainLines } from './MainLines'
 import { useUIStore } from '../../store/useUIStore'
 import { Modal } from '../../components/common/Modal'
 import { displayDigest } from '../../lib/controlCenter'
@@ -90,8 +91,11 @@ export function DailyBoard() {
   }
   return <div style={{ minWidth: 0, overflowWrap: 'anywhere', paddingBottom: 48 }}>
     <header style={{ ...row, justifyContent: 'space-between' }}><div><div style={muted}>{today} · 泰国时间{isDemo ? ' · 本机演示' : ''}</div><h1 style={{ fontSize: 24, letterSpacing: 0, margin: '6px 0' }}>人生看板</h1></div><button style={btn} onClick={() => setPage('journal')}>记录想法</button></header>
-    <section style={band} aria-labelledby="main-lines"><h2 id="main-lines" style={{ fontSize: 17, marginTop: 0 }}>正在推进的主线</h2>
+    <section style={band} aria-labelledby="main-lines"><h2 id="main-lines" style={{ fontSize: 17, marginTop: 0 }}>三大主线</h2>
+      <MainLines />
+      <details style={{ marginTop: 14 }}><summary style={{ fontSize: 13, cursor: 'pointer', color: '#6b7280' }}>各线的计划与边界</summary>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 240px), 1fr))', gap: mobile ? 8 : 12 }}>{MAIN_LINES.map(l => <article key={l.key} style={{ padding: mobile ? 10 : 14, background: '#fff', border: '1px solid #e5e7eb', borderTop: `3px solid ${l.color}`, borderRadius: 8 }}><div style={{ ...row, justifyContent: 'space-between' }}><h3 style={{ fontSize: 16, margin: 0 }}>{l.title}</h3><button style={btn} aria-label={`${l.title}：查看计划与边界`} onClick={() => setLine(l)}>计划与边界</button></div><p style={{ fontSize: 13, lineHeight: 1.7, margin: '8px 0 0' }}>{l.boundary}</p></article>)}</div>
+      </details>
     </section>
     <section style={band} aria-labelledby="daily-todos"><div style={{ ...row, justifyContent: 'space-between' }}><h2 id="daily-todos" style={{ fontSize: 18 }}>今日待办</h2><div style={row}><input style={{ ...field, width: 150, margin: 0 }} aria-label="查看日期" type="date" value={day} max={today} onChange={e => { if (e.target.value) setHistoryDay(e.target.value === today ? '' : e.target.value) }} /><button style={btn} disabled={busy || !ready || historical} onClick={() => setEditing({ title: '', project_id: '', priority: 'mid', due_date: day, estimate_minutes: '', completion_criteria: '', repeat_weekdays: null })}>＋ 新增</button></div></div>
       {ready && <div style={muted}>{pending.length} 项待推进 · 已估时 {pending.reduce((n,t) => n + (t.estimate_minutes || 0), 0)} 分钟{pending.some(t => !t.estimate_minutes) ? '，另有未估时事项' : ''} · 其余时间留白{historical ? ' · 仅已记录事项' : ''}</div>}
