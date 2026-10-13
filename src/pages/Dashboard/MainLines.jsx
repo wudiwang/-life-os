@@ -76,13 +76,16 @@ export function MainLines() {
     const mine = todos.rows.filter(t => ids.has(t.project_id))
     const demands = mine.filter(t => !t.parent_id)
     const subs = mine.filter(t => t.parent_id)
-    const todayActions = actionsForDay(mine, entries.rows, today)
+    // 今日只列【叶子】：已拆出子任务的需求单是容器，列出来会和子任务重复。
+    const hasChildren = new Set(subs.map(t => t.parent_id))
+    const leaves = mine.filter(t => !hasChildren.has(t.id))
+    const todayActions = actionsForDay(leaves, entries.rows, today)
     return {
       ...line, projects, demands, subs, todayActions,
       doneToday: todayActions.filter(a => a.dayState === 'done').length,
       subsDone: subs.filter(t => t.status === 'done').length,
       week: last7.map(day => {
-        const acts = actionsForDay(mine, entries.rows, day, true)
+        const acts = actionsForDay(leaves, entries.rows, day, true)
         return { day, total: acts.length, done: acts.filter(a => a.dayState === 'done').length }
       }),
     }
