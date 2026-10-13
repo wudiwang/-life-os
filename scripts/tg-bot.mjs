@@ -26,6 +26,22 @@ if (!TOKEN) {
 }
 const API = `https://api.telegram.org/bot${TOKEN}`
 
+// Mini App 入口。TG 要求 https，Vercel 线上地址正好满足（本机 dev 地址不行）。
+const WEB_URL = (env.LIFE_OS_WEB_URL || 'https://life-os-topaz-zeta.vercel.app').replace(/\/+$/, '')
+const page = key => ({ url: `${WEB_URL}/?page=${key}` })
+
+// 输入框上方的常驻键盘：web_app 按钮点一下直接开小程序，不跳浏览器、不用登录。
+// 「打卡」故意留纯文字——它走 quickCheckin 确定性快路，比开页面更快。
+const QUICK_KEYBOARD = {
+  keyboard: [
+    [{ text: '🏠 看板', web_app: page('dashboard') }, { text: '📔 随笔', web_app: page('journal') }],
+    [{ text: '❤️ 健康', web_app: page('health') }, { text: '🧠 第二大脑', web_app: page('knowledge') }],
+    [{ text: '打卡' }],
+  ],
+  resize_keyboard: true,
+  is_persistent: true,
+}
+
 const sessions = existsSync(SESSION_FILE) ? JSON.parse(readFileSync(SESSION_FILE, 'utf8')) : {}
 const saveSessions = () => writeFileSync(SESSION_FILE, JSON.stringify(sessions))
 
@@ -41,7 +57,13 @@ async function tg(method, params) {
 async function reply(chatId, text) {
   // TG 单条上限 4096，超长切块；纯文本发送避免 Markdown 解析报错
   for (let i = 0; i < text.length; i += 3800) {
-    await tg('sendMessage', { chat_id: chatId, text: text.slice(i, i + 3800) })
+    const isLast = i + 3800 >= text.length
+    await tg('sendMessage', {
+      chat_id: chatId,
+      text: text.slice(i, i + 3800),
+      // 键盘只挂最后一块；每条回复都重申，用户手动收起过也能自动回来
+      ...(isLast ? { reply_markup: QUICK_KEYBOARD } : {}),
+    })
   }
 }
 
@@ -136,7 +158,7 @@ async function handleMessage(msg) {
     return
   }
   if (text === '/start') {
-    await reply(chatId, '👋 我是大仙，你的人生 OS 管家。随便跟我说：记一笔今天的心情、加个待办、查查最近体重、聊聊目标……都行。\n\n快捷指令：「打卡」看今日动作，回数字完成打卡；「原则 xxx」记原则落实。发 /new 可重开会话。')
+    await reply(chatId, '👋 我是大仙，你的人生 OS 管家。随便跟我说：记一笔今天的心情、加个待办、查查最近体重、聊聊目标……都行。\n\n📱 左下角「人生 OS」按钮、或下方键盘，直接在 TG 里打开网页端，不用登录。\n\n快捷指令：「打卡」看今日动作，回数字完成打卡；「原则 xxx」记原则落实。发 /new 可重开会话。')
     return
   }
 
@@ -546,6 +568,26 @@ if (!me.ok) {
   process.exit(1)
 }
 console.log(`✅ @${me.result.username} 已上线，等待消息中（Ctrl+C 停止）`)
+
+// ── Mini App 入口注册 ──────────────────────────────────────────────
+// setChatMenuButton 设的是输入框左侧那颗按钮（默认是「/」菜单，换成 web_app 就变成
+// 「打开人生 OS」）。一次设置永久生效，但每次启动都重设，免得改了 URL 忘记同步。
+// 注册失败不该挡住机器人本职工作，所以单独 try。
+try {
+  await tgRetry('setChatMenuButton', {
+    menu_button: { type: 'web_app', text: '人生 OS', web_app: { url: WEB_URL } },
+  })
+  await tgRetry('setMyCommands', {
+    commands: [
+      { command: 'start', description: '唤出快捷键盘' },
+      { command: 'today', description: '今日动作清单' },
+      { command: 'new', description: '开启新会话' },
+    ],
+  })
+  console.log(`🧩 Mini App 入口已注册 → ${WEB_URL}`)
+} catch (e) {
+  console.warn('Mini App 入口注册失败（不影响对话）：', e.message)
+}
 
 // 与 TG 长轮询并行跑，不 await
 workerLoop()

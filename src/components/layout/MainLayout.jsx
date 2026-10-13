@@ -10,7 +10,8 @@ function QuickJournalFab() {
   if (currentPage === 'journal') return null
   return (
     <button onClick={() => setPage('journal')} title="快速记一笔" aria-label="快速记一笔" style={{
-      position: 'fixed', right: 20, bottom: 24, zIndex: 60,
+      position: 'fixed', right: 20, zIndex: 60,
+      bottom: 'calc(24px + var(--tg-safe-bottom, 0px))',
       width: 52, height: 52, borderRadius: '50%', border: 'none',
       background: COLORS.primary, color: '#fff', fontSize: 22,
       boxShadow: '0 6px 16px rgba(59,130,246,0.45)',
@@ -68,7 +69,11 @@ export function MainLayout({ children }) {
           </div>
         )}
 
-        <div style={{ flex: 1, padding: 12, width: '100%' }}>
+        <div style={{
+          flex: 1, width: '100%', padding: 12,
+          // TG 小程序里 iOS 手势条会盖住最后一行，--tg-safe-bottom 由 lib/telegram.js 注入
+          paddingBottom: 'calc(12px + var(--tg-safe-bottom, 0px))',
+        }}>
           {children}
         </div>
         <QuickJournalFab />
