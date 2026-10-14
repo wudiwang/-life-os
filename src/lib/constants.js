@@ -24,6 +24,7 @@ export const NAV_ITEMS = [
   { key: 'journal', label: '每日一记', icon: '📔' },
   { key: 'tradePatterns', label: '交易形态库', icon: '📐' },
   { key: 'health', label: '健康', icon: '❤️' },
+  { key: 'mealPlan', label: '一周食谱', icon: '🥑' },
   { key: 'habits', label: '习惯', icon: '🔁' },
   { key: 'goals', label: '目标', icon: '🎯' },
   { key: 'work', label: '工作', icon: '💼' },
