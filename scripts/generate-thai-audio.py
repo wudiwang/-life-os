@@ -35,6 +35,12 @@ def digest(data):
     return hashlib.sha256(data).hexdigest()
 
 
+def source_hash(path=SOURCE):
+    # Universal newline reading keeps Git's LF/CRLF checkout conversion out of
+    # the content identity, while preserving the course's UTF-8 text exactly.
+    return digest(path.read_text(encoding="utf-8").encode("utf-8"))
+
+
 def utc_now():
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
 
@@ -160,7 +166,7 @@ def verify(items, previous):
         "expectedClipCount": len(items), "uniqueTextCount": len({item["text"] for item in items}),
         "totalBytes": total, "voice": VOICE, "rate": RATE, "locale": "th-TH",
         "synthetic": True, "humanPronunciationReviewed": False,
-        "source": {"file": "src/pages/Thai/thaiLessons.js", "sha256": digest(SOURCE.read_bytes())},
+        "source": {"file": "src/pages/Thai/thaiLessons.js", "sha256": source_hash()},
     }
     if any(previous.get(key) != value for key, value in expected_metadata.items()):
         raise RuntimeError("Manifest course metadata, voice settings, totals or completeness are stale")
@@ -185,7 +191,7 @@ async def generate(items, args, staging):
     selected = list(groups.values())[:args.limit] if args.limit else list(groups.values())
     manifest = {
         "schemaVersion": 1,
-        "source": {"file": "src/pages/Thai/thaiLessons.js", "sha256": digest(SOURCE.read_bytes())},
+        "source": {"file": "src/pages/Thai/thaiLessons.js", "sha256": source_hash()},
         "provider": "Microsoft Edge online text-to-speech",
         "generator": {"package": "edge-tts", "version": version("edge-tts"), "url": SOURCE_URL},
         "voice": VOICE, "locale": "th-TH", "rate": RATE,
