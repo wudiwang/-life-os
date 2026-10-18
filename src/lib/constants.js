@@ -29,6 +29,7 @@ export const NAV_ITEMS = [
   { key: 'work', label: '工作', icon: '💼' },
   { key: 'explore', label: '探索世界', icon: '🧭' },
   { key: 'knowledge', label: '第二大脑', icon: '🧠' },
+  { key: 'thai', label: '泰语学习', icon: '🇹🇭' },
   { key: 'relations', label: '情感关系', icon: '💞' },
   { key: 'ai', label: 'AI 分析', icon: '🤖' },
   { key: 'settings', label: '设置', icon: '⚙️' },
@@ -216,6 +217,7 @@ export const ALL_TABLES = [
   'journal_threads', 'insights',
   'okr_objectives', 'weekly_actions', 'weekly_action_logs', 'principle_logs',
   'trade_patterns', 'trade_pattern_updates',
+  'thai_learning_progress',
 ]
 
 // OKR 层级。结果指标只在回顾时看，每日/每周只考核 weekly_actions 的动作完成度。

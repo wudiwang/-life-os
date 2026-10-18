@@ -9,6 +9,7 @@ import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 import { buildRefinePrompt, parseRefineResult } from './refine-prompt.mjs'
 import { runLocalBrain, runLocalBrainSync } from './local-brain.mjs'
+import { buildQuickKeyboard } from './tg-keyboard.mjs'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const SESSION_FILE = join(root, 'scripts', '.tg-session.json')
@@ -28,19 +29,10 @@ const API = `https://api.telegram.org/bot${TOKEN}`
 
 // Mini App 入口。TG 要求 https，Vercel 线上地址正好满足（本机 dev 地址不行）。
 const WEB_URL = (env.LIFE_OS_WEB_URL || 'https://life-os-topaz-zeta.vercel.app').replace(/\/+$/, '')
-const page = key => ({ url: `${WEB_URL}/?page=${key}` })
 
 // 输入框上方的常驻键盘：web_app 按钮点一下直接开小程序，不跳浏览器、不用登录。
 // 「打卡」故意留纯文字——它走 quickCheckin 确定性快路，比开页面更快。
-const QUICK_KEYBOARD = {
-  keyboard: [
-    [{ text: '🏠 看板', web_app: page('dashboard') }, { text: '📔 随笔', web_app: page('journal') }],
-    [{ text: '❤️ 健康', web_app: page('health') }, { text: '🧠 第二大脑', web_app: page('knowledge') }],
-    [{ text: '打卡' }],
-  ],
-  resize_keyboard: true,
-  is_persistent: true,
-}
+const QUICK_KEYBOARD = buildQuickKeyboard(WEB_URL)
 
 const sessions = existsSync(SESSION_FILE) ? JSON.parse(readFileSync(SESSION_FILE, 'utf8')) : {}
 const saveSessions = () => writeFileSync(SESSION_FILE, JSON.stringify(sessions))

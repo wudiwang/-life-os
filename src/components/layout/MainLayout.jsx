@@ -7,7 +7,7 @@ import { useIsMobile } from '../../hooks/useIsMobile'
 // 全局快记入口：任意页面右下角浮动按钮，一键进入每日一记（PC/H5 同步）
 function QuickJournalFab() {
   const { currentPage, setPage } = useUIStore()
-  if (currentPage === 'journal') return null
+  if (currentPage === 'journal' || currentPage === 'thai') return null
   return (
     <button onClick={() => setPage('journal')} title="快速记一笔" aria-label="快速记一笔" style={{
       position: 'fixed', right: 20, zIndex: 60,

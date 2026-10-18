@@ -13,6 +13,7 @@ import { RelationsPage } from './Relations/RelationsPage'
 import { JournalPage } from './Journal/JournalPage'
 import { OKRPage } from './OKR/OKRPage'
 import { TradePatternsPage } from './TradePatterns/TradePatternsPage'
+import { ThaiPage } from './Thai/ThaiPage'
 
 export const PAGES = {
   dashboard: DailyBoard,
@@ -26,6 +27,7 @@ export const PAGES = {
   work: WorkPage,
   explore: ExplorePage,
   knowledge: KnowledgePage,
+  thai: ThaiPage,
   relations: RelationsPage,
   ai: AIPage,
   settings: SettingsPage,

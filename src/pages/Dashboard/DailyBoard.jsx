@@ -93,6 +93,7 @@ export function DailyBoard() {
     <header style={{ ...row, justifyContent: 'space-between' }}><div><div style={muted}>{today} · 泰国时间{isDemo ? ' · 本机演示' : ''}</div><h1 style={{ fontSize: 24, letterSpacing: 0, margin: '6px 0' }}>人生看板</h1></div><button style={btn} onClick={() => setPage('journal')}>记录想法</button></header>
     <section style={band} aria-labelledby="main-lines"><h2 id="main-lines" style={{ fontSize: 17, marginTop: 0 }}>三大主线</h2>
       <MainLines />
+      <button style={{ ...btn, minHeight: 44, marginTop: 14 }} onClick={() => setPage('thai')}>🇹🇭 泰语学习 · 听一句，跟读一句 →</button>
       <details style={{ marginTop: 14 }}><summary style={{ fontSize: 13, cursor: 'pointer', color: '#6b7280' }}>各线的计划与边界</summary>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 240px), 1fr))', gap: mobile ? 8 : 12 }}>{MAIN_LINES.map(l => <article key={l.key} style={{ padding: mobile ? 10 : 14, background: '#fff', border: '1px solid #e5e7eb', borderTop: `3px solid ${l.color}`, borderRadius: 8 }}><div style={{ ...row, justifyContent: 'space-between' }}><h3 style={{ fontSize: 16, margin: 0 }}>{l.title}</h3><button style={btn} aria-label={`${l.title}：查看计划与边界`} onClick={() => setLine(l)}>计划与边界</button></div><p style={{ fontSize: 13, lineHeight: 1.7, margin: '8px 0 0' }}>{l.boundary}</p></article>)}</div>
       </details>
