@@ -28,6 +28,7 @@ git push origin main → Vercel 自动构建发布（约1-2分钟）
 | 每日一记 | Journal/JournalPage | 快记(AI 提炼后确认入库) + **启示条**(InsightBar，insights 表) + **主线面板**(ThreadsPanel，journal_threads 表) + 心情(1-5)/感恩/心情曲线 + 按天折叠的笔记流 |
 | 交易形态库 | TradePatterns/TradePatternsPage | 交易项目 `research/ideas` 的云端镜像：原图/原话、事实、规律、待定项、研究时间线；网页新增进入待写回队列 |
 | 健康 | Health/HealthPage | 4 tabs：体成分(BodyTab)/血液检查(BloodTab)/指标记录/体检报告；指标定义在 constants 的 METRIC_TYPES、BODY_METRICS、BLOOD_PANEL |
+| 一周食谱 | MealPlan/MealPlanPage | 定量版健康生酮周食谱：每样食材给克数，营养按 `FOODS` 每100g 值自动汇总（每餐/全天/周均/采购清单），每天一道空气炸锅菜；PC 七日网格/移动端按天切换。数据 `lib/ketoPlan.js`，与大图 `public/keto-week.png` 同源；改数据后跑 `node scripts/render-keto-poster.mjs` 重出图 |
 | 习惯 | Habits/HabitsPage | 7天打卡网格 + streak；habit_logs 以 (habit_id, log_date) 判打卡 |
 | 目标 | Goals/GoalsPage | 目标卡片 + 详情弹窗(里程碑/检查点自检/过程记录/复盘) |
 | 工作 | Work/WorkPage | 4 tabs：待办/日志/职责档案(work_profile.field)/人际地图 |

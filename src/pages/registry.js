@@ -14,6 +14,7 @@ import { JournalPage } from './Journal/JournalPage'
 import { OKRPage } from './OKR/OKRPage'
 import { TradePatternsPage } from './TradePatterns/TradePatternsPage'
 import { ThaiPage } from './Thai/ThaiPage'
+import { MealPlanPage } from './MealPlan/MealPlanPage'
 
 export const PAGES = {
   dashboard: DailyBoard,
@@ -22,6 +23,7 @@ export const PAGES = {
   journal: JournalPage,
   tradePatterns: TradePatternsPage,
   health: HealthPage,
+  mealPlan: MealPlanPage,
   habits: HabitsPage,
   goals: GoalsPage,
   work: WorkPage,
