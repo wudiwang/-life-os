@@ -5,6 +5,8 @@ import { useIsMobile } from '../../hooks/useIsMobile'
 import { THAI_COURSE_VERSION, THAI_LESSONS, THAI_READING_GUIDE } from './thaiLessons'
 import { nextLessonDay, parseLessonDay, practiceRow, validProgress } from './thaiProgress'
 import { createThaiAudioPlayer } from './thaiAudio'
+import { THAI_TOPICS, parseTopicKey } from './thaiTopics'
+import { ThaiTopicView } from './ThaiTopicView'
 
 const button = { minHeight: 44, borderRadius: 10, border: `1px solid ${COLORS.border}`, padding: '10px 16px', color: COLORS.text, background: '#fff', cursor: 'pointer', fontSize: 14 }
 const subtle = { color: COLORS.textLight, fontSize: 13, lineHeight: 1.7 }
@@ -13,6 +15,7 @@ const groups = ['先能开口', '吃饭喝东西', '日常购物', '出门办事
 export function ThaiPage() {
   const mobile = useIsMobile()
   const [day, setDay] = useState(() => parseLessonDay(window.location.hash))
+  const [topicKey, setTopicKey] = useState(() => parseTopicKey(window.location.hash))
   const [rows, setRows] = useState([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(false)
@@ -28,7 +31,7 @@ export function ThaiPage() {
   useEffect(() => {
     live.current = true
     player.current = createThaiAudioPlayer({ onChange: setAudio })
-    const navigate = () => setDay(parseLessonDay(window.location.hash))
+    const navigate = () => { setDay(parseLessonDay(window.location.hash)); setTopicKey(parseTopicKey(window.location.hash)) }
     window.addEventListener('hashchange', navigate)
     window.addEventListener('popstate', navigate)
     return () => {
@@ -53,9 +56,10 @@ export function ThaiPage() {
     setHideChinese(false)
     setNotice(null)
     window.scrollTo(0, 0)
-  }, [day])
+  }, [day, topicKey])
 
   const lesson = THAI_LESSONS.find(item => item.day === day)
+  const topic = !lesson && THAI_TOPICS.find(item => item.key === topicKey)
   const practiced = rows.find(row => row.lesson_day === day)
   const resumeDay = nextLessonDay(rows)
   async function markPracticed() {
@@ -101,7 +105,7 @@ export function ThaiPage() {
   </>
 
   return <main style={{ maxWidth: 720, margin: '0 auto', paddingBottom: 32, color: COLORS.text }}>
-    {!lesson ? <>
+    {topic ? <ThaiTopicView key={topic.key} topic={topic} mobile={mobile} /> : !lesson ? <>
       <header style={{ padding: '12px 0 24px' }}>
         <p style={{ ...subtle, margin: 0 }}>每天一点 · 生活口语 30 天</p>
         <h1 style={{ fontSize: mobile ? 27 : 32, margin: '8px 0 10px', letterSpacing: '-0.5px' }}>泰语，开口就好</h1>
@@ -111,6 +115,19 @@ export function ThaiPage() {
         </a>
         {progressStatus}
       </header>
+      <section style={{ marginBottom: 22 }}>
+        <h2 style={{ fontSize: 14, color: COLORS.textLight, fontWeight: 500, margin: '0 0 8px' }}>专题 · 按场景速查</h2>
+        <div style={{ background: '#fff', border: `1px solid ${COLORS.border}`, borderRadius: 12, overflow: 'hidden' }}>
+          {THAI_TOPICS.map((item, i) => <a key={item.key} href={`#thai-topic=${item.key}`} style={{ padding: mobile ? '15px 14px' : '16px 20px', display: 'flex', alignItems: 'center', gap: 12, color: COLORS.text, textDecoration: 'none', borderBottom: i < THAI_TOPICS.length - 1 ? `1px solid ${COLORS.border}` : 'none', minHeight: 58 }}>
+            <span aria-hidden="true" style={{ fontSize: 20, minWidth: 34 }}>{item.icon}</span>
+            <span style={{ flex: 1 }}>
+              <span style={{ display: 'block', fontSize: 15 }}>{item.title}</span>
+              <span style={{ ...subtle, fontSize: 12 }}>{item.summary}</span>
+            </span>
+            <span aria-hidden="true" style={{ color: COLORS.textLight }}>›</span>
+          </a>)}
+        </div>
+      </section>
       {groups.map((title, index) => <section key={title} style={{ marginBottom: 22 }}>
         <h2 style={{ fontSize: 14, color: COLORS.textLight, fontWeight: 500, margin: '0 0 8px' }}>{title} · 第 {index * 5 + 1}～{index * 5 + 5} 天</h2>
         <div style={{ background: '#fff', border: `1px solid ${COLORS.border}`, borderRadius: 12, overflow: 'hidden' }}>
