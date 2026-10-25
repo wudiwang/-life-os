@@ -31,3 +31,10 @@ if (existsSync(url)) {
     assert.equal(nextLessonDay([{ ...row, course_version: 'old' }]), 1)
   })
 }
+
+test('home tab hash falls back to the course tab', async () => {
+  const { parseThaiTab } = await import(url)
+  assert.equal(parseThaiTab('#thai-tab=words'), 'words')
+  assert.equal(parseThaiTab('#thai-tab=review'), 'review')
+  for (const hash of ['', '#thai', '#thai-tab=evil', '#thai-day=3']) assert.equal(parseThaiTab(hash), 'course')
+})

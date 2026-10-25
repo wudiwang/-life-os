@@ -1,41 +1,55 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { COLORS } from '../../lib/constants'
 import { db, isDemo } from '../../lib/dataStore'
 import { useIsMobile } from '../../hooks/useIsMobile'
-import { THAI_COURSE_VERSION, THAI_LESSONS, THAI_READING_GUIDE } from './thaiLessons'
-import { nextLessonDay, parseLessonDay, practiceRow, validProgress } from './thaiProgress'
+import { TableMissing } from '../../components/common/TableMissing'
+import { THAI_COURSE_VERSION } from './thaiLessons'
+import { nextLessonDay, parseLessonDay, parseThaiTab, practiceRow, validProgress } from './thaiProgress'
+import { masteredSet, masteryPatch, resultPatch } from './thaiStudy'
 import { createThaiAudioPlayer } from './thaiAudio'
+import { ThaiHome } from './ThaiHome'
+import { ThaiLesson } from './ThaiLesson'
 import { THAI_TOPICS, parseTopicKey } from './thaiTopics'
 import { ThaiTopicView } from './ThaiTopicView'
+import { ui } from './ThaiParts'
 
-const button = { minHeight: 44, borderRadius: 10, border: `1px solid ${COLORS.border}`, padding: '10px 16px', color: COLORS.text, background: '#fff', cursor: 'pointer', fontSize: 14 }
-const subtle = { color: COLORS.textLight, fontSize: 13, lineHeight: 1.7 }
-const groups = ['先能开口', '吃饭喝东西', '日常购物', '出门办事', '天气与求助', '扩展表达']
+const ITEM_TABLE = 'thai_item_progress'
+const QUIZ_TABLE = 'thai_quiz_results'
+const ITEM_CONFLICT = ['course_version', 'item_key']
+
+const readRoute = hash => ({ day: parseLessonDay(hash), tab: parseThaiTab(hash), topic: parseTopicKey(hash) })
+
+const isMissingTable = e => /does not exist|PGRST205|42P01|schema cache/i.test(`${e?.code ?? ''} ${e?.message ?? ''}`)
+
+function mergeRows(old, saved) {
+  const byKey = new Map(old.map(r => [r.item_key, r]))
+  for (const r of saved) byKey.set(r.item_key, { ...byKey.get(r.item_key), ...r })
+  return [...byKey.values()]
+}
 
 export function ThaiPage() {
   const mobile = useIsMobile()
-  const [day, setDay] = useState(() => parseLessonDay(window.location.hash))
-  const [topicKey, setTopicKey] = useState(() => parseTopicKey(window.location.hash))
-  const [rows, setRows] = useState([])
+  const [route, setRoute] = useState(() => readRoute(window.location.hash))
+  const [practiceRows, setPracticeRows] = useState([])
+  const [itemRows, setItemRows] = useState([])
+  const [quizHistory, setQuizHistory] = useState([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(false)
+  const [missing, setMissing] = useState(false)
   const [revision, setRevision] = useState(0)
-  const [hideChinese, setHideChinese] = useState(false)
   const [audio, setAudio] = useState({ status: 'idle', id: null })
-  const [saving, setSaving] = useState(false)
   const [notice, setNotice] = useState(null)
   const player = useRef(null)
-  const savingLock = useRef(false)
-  const live = useRef(false)
+  // 事件处理里读最新的掌握记录（答题结束、连续点标记时不会拿到旧值）。
+  const itemRowsRef = useRef(itemRows)
+  useEffect(() => { itemRowsRef.current = itemRows }, [itemRows])
 
   useEffect(() => {
-    live.current = true
     player.current = createThaiAudioPlayer({ onChange: setAudio })
-    const navigate = () => { setDay(parseLessonDay(window.location.hash)); setTopicKey(parseTopicKey(window.location.hash)) }
+    const navigate = () => setRoute(readRoute(window.location.hash))
     window.addEventListener('hashchange', navigate)
     window.addEventListener('popstate', navigate)
     return () => {
-      live.current = false
       player.current.dispose()
       window.removeEventListener('hashchange', navigate)
       window.removeEventListener('popstate', navigate)
@@ -45,137 +59,115 @@ export function ThaiPage() {
   useEffect(() => {
     let cancelled = false
     setLoading(true); setLoadError(false)
-    db.list('thai_learning_progress', { filters: { course_version: THAI_COURSE_VERSION }, orderBy: 'lesson_day', ascending: true }).then(data => {
-      if (!cancelled) setRows(data.filter(validProgress))
-    }).catch(() => { if (!cancelled) setLoadError(true) }).finally(() => { if (!cancelled) setLoading(false) })
+    const filters = { course_version: THAI_COURSE_VERSION }
+    Promise.all([
+      db.list('thai_learning_progress', { filters, orderBy: 'lesson_day', ascending: true }),
+      db.list(ITEM_TABLE, { filters, orderBy: 'item_key', ascending: true }).then(rows => ({ rows }), e => ({ error: e })),
+      db.list(QUIZ_TABLE, { filters, orderBy: 'taken_at', ascending: false, limit: 60 }).then(rows => ({ rows }), e => ({ error: e })),
+    ]).then(([progress, items, quizzes]) => {
+      if (cancelled) return
+      setPracticeRows(progress.filter(validProgress))
+      const lost = [items, quizzes].filter(r => r.error)
+      if (lost.some(r => !isMissingTable(r.error))) throw lost[0].error
+      setMissing(lost.length > 0)
+      setItemRows(items.rows || [])
+      setQuizHistory(quizzes.rows || [])
+    }).catch(() => { if (!cancelled) setLoadError(true) })
+      .finally(() => { if (!cancelled) setLoading(false) })
     return () => { cancelled = true }
   }, [revision])
 
   useEffect(() => {
     player.current?.stop()
-    setHideChinese(false)
     setNotice(null)
     window.scrollTo(0, 0)
-  }, [day, topicKey])
+  }, [route.day, route.tab, route.topic])
 
-  const lesson = THAI_LESSONS.find(item => item.day === day)
-  const topic = !lesson && THAI_TOPICS.find(item => item.key === topicKey)
-  const practiced = rows.find(row => row.lesson_day === day)
-  const resumeDay = nextLessonDay(rows)
-  async function markPracticed() {
-    if (savingLock.current || !lesson || loading || loadError) return
-    const savedDay = lesson.day
-    savingLock.current = true; setSaving(true); setNotice(null)
+  const rowsByKey = useMemo(() => new Map(itemRows.map(r => [r.item_key, r])), [itemRows])
+  const mastered = useMemo(() => masteredSet(itemRows), [itemRows])
+  const practicedDays = useMemo(() => new Set(practiceRows.map(r => r.lesson_day)), [practiceRows])
+  const canSave = !loading && !loadError && !missing
+
+  async function saveItems(rows) {
+    const saved = await Promise.all(rows.map(row => db.upsert(ITEM_TABLE, row, ITEM_CONFLICT)))
+    setItemRows(old => mergeRows(old, saved))
+    return saved
+  }
+
+  // 先改界面再保存；保存失败就退回原状态并提示。
+  async function saveOptimistic(rows, failText) {
+    const before = itemRowsRef.current
+    setItemRows(old => mergeRows(old, rows))
     try {
-      const saved = await db.upsert('thai_learning_progress', practiceRow(savedDay), ['course_version', 'lesson_day'])
-      if (!validProgress(saved)) throw new Error('Save was not confirmed')
-      if (live.current) {
-        setRows(old => [...old.filter(row => row.lesson_day !== savedDay), saved])
-        setNotice({ day: savedDay, ok: true, text: '已记下，今天读到这里就好。' })
-      }
+      await saveItems(rows)
     } catch {
-      if (live.current) setNotice({ day: savedDay, ok: false, text: '未能保存，请再试一次。刚才读过的内容不用重学。' })
-    } finally {
-      savingLock.current = false
-      if (live.current) setSaving(false)
+      setItemRows(before)
+      setNotice({ ok: false, text: failText })
     }
   }
 
-  function phrase(item, index, isWord = false) {
-    const active = audio.id === item.id && ['loading', 'playing'].includes(audio.status)
-    return <div key={item.id} style={{ display: 'flex', gap: 12, padding: isWord ? '14px 0' : '20px 0', borderBottom: `1px solid ${COLORS.border}`, alignItems: 'center' }}>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        {!isWord && <div style={{ ...subtle, fontSize: 11, marginBottom: 5 }}>{item.role}</div>}
-        <div style={{ fontSize: isWord ? 16 : 18, fontWeight: 600, lineHeight: 1.6, color: hideChinese ? COLORS.textLight : COLORS.text }}>
-          {hideChinese ? '中文已遮住' : item.zh}
-        </div>
-        <div lang="th" style={{ fontSize: isWord ? 19 : 22, lineHeight: 1.7, marginTop: 3 }}>{item.th}</div>
-        <div style={{ color: COLORS.primaryDark, fontSize: 15, lineHeight: 1.7, overflowWrap: 'anywhere' }}>{item.roman}</div>
-      </div>
-      <button type="button" aria-label={`${active ? '停止' : '播放'}${isWord ? '关键词' : '对话'}${index + 1}`} aria-pressed={active} onClick={() => player.current?.play(item.id)} style={{ ...button, padding: 0, width: 48, height: 48, flexShrink: 0, color: COLORS.primaryDark, background: active ? '#DBEAFE' : '#EFF6FF', borderColor: '#BFDBFE', fontSize: 21 }}>
-        <span aria-hidden="true">{active ? '■' : '🔊'}</span>
-      </button>
-    </div>
+  function toggleMastered(key) {
+    if (!canSave) return
+    const prev = itemRowsRef.current.find(r => r.item_key === key)
+    return saveOptimistic([masteryPatch(prev, key, !prev?.mastered)], '掌握标记没保存上，请再点一次。')
   }
 
-  const progressStatus = <>
-    {isDemo && <p style={subtle}>本机演示 · 练习记录只保存在当前浏览器</p>}
-    {loading && <p role="status" style={subtle}>正在读取练习记录，不影响听读。</p>}
-    {loadError && <div role="alert" style={{ ...subtle, color: '#9A3412', padding: '10px 0' }}>练习记录暂时不可用，仍可以听读。 <button style={button} onClick={() => setRevision(n => n + 1)}>重试读取</button></div>}
-  </>
+  function markMastered(keys) {
+    if (!canSave || !keys.length) return
+    const byKey = new Map(itemRowsRef.current.map(r => [r.item_key, r]))
+    return saveOptimistic(keys.map(key => masteryPatch(byKey.get(key), key, true)), '掌握标记没保存上，请再试一次。')
+  }
+
+  async function finishQuiz({ scope, day, results }) {
+    if (!canSave) throw new Error('暂时不能保存')
+    const verdict = new Map()
+    for (const r of results) verdict.set(r.key, (verdict.get(r.key) ?? true) && r.correct)
+    const byKey = new Map(itemRowsRef.current.map(r => [r.item_key, r]))
+    const unmarked = [...verdict].filter(([key, ok]) => !ok && byKey.get(key)?.mastered).map(([key]) => key)
+    await saveItems([...verdict].map(([key, ok]) => resultPatch(byKey.get(key), key, ok)))
+    const record = await db.insert(QUIZ_TABLE, {
+      course_version: THAI_COURSE_VERSION, scope, lesson_day: day,
+      total: results.length, correct: results.filter(r => r.correct).length,
+      wrong_keys: results.filter(r => !r.correct).map(r => r.key), taken_at: new Date().toISOString(),
+    })
+    setQuizHistory(old => [record, ...old])
+    if (scope === 'day') {
+      const saved = await db.upsert('thai_learning_progress', practiceRow(day), ['course_version', 'lesson_day'])
+      if (validProgress(saved)) setPracticeRows(old => [...old.filter(r => r.lesson_day !== day), saved])
+    }
+    return { unmarked }
+  }
+
+  const statusSlot = <div style={{ marginTop: 8 }}>
+    {isDemo && <p style={ui.subtle}>本机演示 · 学习记录只保存在当前浏览器</p>}
+    {loading && <p role="status" style={ui.subtle}>正在读取学习记录，不影响听读。</p>}
+    {missing && <TableMissing sql="v17_thai_mastery.sql" />}
+    {loadError && <div role="alert" style={{ ...ui.subtle, color: '#9A3412', padding: '8px 0' }}>
+      学习记录暂时读不到，仍可以听读。 <button style={ui.button} onClick={() => setRevision(n => n + 1)}>重试读取</button>
+    </div>}
+    {notice && <p role="alert" style={{ ...ui.subtle, color: notice.ok ? '#15803D' : '#B45309' }}>{notice.text}</p>}
+  </div>
+
+  const shared = { mobile, mastered, rowsByKey, practicedDays, player, audio, canSave, onToggle: toggleMastered, onMarkMastered: markMastered, onQuizFinish: finishQuiz }
+
+  const topic = !route.day && THAI_TOPICS.find(item => item.key === route.topic)
+  if (topic) {
+    return <main style={{ maxWidth: 720, margin: '0 auto', paddingBottom: 32, color: COLORS.text }}>
+      <ThaiTopicView key={topic.key} topic={topic} mobile={mobile} />
+    </main>
+  }
+
+  if (route.day) {
+    const best = quizHistory.filter(r => r.scope === 'day' && r.lesson_day === route.day)
+      .reduce((top, r) => (!top || r.correct / r.total > top.correct / top.total ? r : top), null)
+    return <main style={{ maxWidth: 720, margin: '0 auto', paddingBottom: 32, color: COLORS.text }}>
+      <ThaiLesson key={route.day} day={route.day} {...shared} practiced={practicedDays.has(route.day)}
+        bestScore={best ? `${best.correct}/${best.total}` : '—'} />
+      {statusSlot}
+    </main>
+  }
 
   return <main style={{ maxWidth: 720, margin: '0 auto', paddingBottom: 32, color: COLORS.text }}>
-    {topic ? <ThaiTopicView key={topic.key} topic={topic} mobile={mobile} /> : !lesson ? <>
-      <header style={{ padding: '12px 0 24px' }}>
-        <p style={{ ...subtle, margin: 0 }}>每天一点 · 生活口语 30 天</p>
-        <h1 style={{ fontSize: mobile ? 27 : 32, margin: '8px 0 10px', letterSpacing: '-0.5px' }}>泰语，开口就好</h1>
-        <p style={{ ...subtle, fontSize: 15 }}>看一遍，听一句，跟读几下。每天约 3～5 分钟。</p>
-        <a href={`#thai-day=${resumeDay}`} style={{ ...button, display: 'inline-flex', alignItems: 'center', color: '#fff', background: COLORS.primaryDark, borderColor: COLORS.primaryDark, textDecoration: 'none' }}>
-          {rows.length ? '继续学习' : '从这里开始'} · 第 {resumeDay} 天 →
-        </a>
-        {progressStatus}
-      </header>
-      <section style={{ marginBottom: 22 }}>
-        <h2 style={{ fontSize: 14, color: COLORS.textLight, fontWeight: 500, margin: '0 0 8px' }}>专题 · 按场景速查</h2>
-        <div style={{ background: '#fff', border: `1px solid ${COLORS.border}`, borderRadius: 12, overflow: 'hidden' }}>
-          {THAI_TOPICS.map((item, i) => <a key={item.key} href={`#thai-topic=${item.key}`} style={{ padding: mobile ? '15px 14px' : '16px 20px', display: 'flex', alignItems: 'center', gap: 12, color: COLORS.text, textDecoration: 'none', borderBottom: i < THAI_TOPICS.length - 1 ? `1px solid ${COLORS.border}` : 'none', minHeight: 58 }}>
-            <span aria-hidden="true" style={{ fontSize: 20, minWidth: 34 }}>{item.icon}</span>
-            <span style={{ flex: 1 }}>
-              <span style={{ display: 'block', fontSize: 15 }}>{item.title}</span>
-              <span style={{ ...subtle, fontSize: 12 }}>{item.summary}</span>
-            </span>
-            <span aria-hidden="true" style={{ color: COLORS.textLight }}>›</span>
-          </a>)}
-        </div>
-      </section>
-      {groups.map((title, index) => <section key={title} style={{ marginBottom: 22 }}>
-        <h2 style={{ fontSize: 14, color: COLORS.textLight, fontWeight: 500, margin: '0 0 8px' }}>{title} · 第 {index * 5 + 1}～{index * 5 + 5} 天</h2>
-        <div style={{ background: '#fff', border: `1px solid ${COLORS.border}`, borderRadius: 12, overflow: 'hidden' }}>
-          {THAI_LESSONS.slice(index * 5, index * 5 + 5).map(item => {
-            const record = rows.find(row => row.lesson_day === item.day)
-            return <a key={item.day} href={`#thai-day=${item.day}`} style={{ padding: mobile ? '15px 14px' : '16px 20px', display: 'flex', alignItems: 'center', gap: 12, color: COLORS.text, textDecoration: 'none', borderBottom: item.day % 5 ? `1px solid ${COLORS.border}` : 'none', minHeight: 58 }}>
-              <span style={{ color: COLORS.textLight, fontSize: 12, minWidth: 34 }}>{String(item.day).padStart(2, '0')}</span>
-              <span style={{ flex: 1, fontSize: 15 }}>{item.title}</span>
-              {record && <span style={{ ...subtle, fontSize: 11 }}>读过</span>}
-              <span aria-hidden="true" style={{ color: COLORS.textLight }}>›</span>
-            </a>
-          })}
-        </div>
-      </section>)}
-    </> : <>
-      <a href="#thai" style={{ ...subtle, display: 'inline-flex', alignItems: 'center', minHeight: 44, textDecoration: 'none' }}>‹ 30 天目录</a>
-      <header style={{ margin: '10px 0 20px' }}>
-        <div style={subtle}>第 {day} / 30 天 · 约 3～5 分钟</div>
-        <h1 style={{ fontSize: mobile ? 27 : 32, margin: '6px 0 10px' }}>{lesson.title}</h1>
-        <p style={{ fontSize: 15, lineHeight: 1.8, margin: 0 }}>{lesson.goal}</p>
-      </header>
-      <div style={{ background: '#fff', border: `1px solid ${COLORS.border}`, borderRadius: 14, padding: mobile ? '16px 18px' : '22px 28px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
-          <h2 style={{ fontSize: 16, margin: 0 }}>先认这 3 个词</h2>
-          <button style={{ ...button, fontSize: 12, padding: '8px 10px' }} aria-pressed={hideChinese} onClick={() => setHideChinese(value => !value)}>{hideChinese ? '显示中文' : '遮住中文'}</button>
-        </div>
-        {lesson.words.map((item, i) => phrase(item, i, true))}
-        <h2 style={{ fontSize: 16, margin: '30px 0 4px' }}>放进对话，跟着读</h2>
-        <p style={{ ...subtle, margin: 0 }}>点右边的小喇叭，再跟读一句。</p>
-        {lesson.dialogue.map((item, i) => phrase(item, i))}
-        {!hideChinese && <p style={{ ...subtle, margin: '16px 0 0' }}>{lesson.tip}</p>}
-        <details style={{ ...subtle, marginTop: 16 }}>
-          <summary style={{ cursor: 'pointer', padding: '10px 0', minHeight: 44 }}>读音小提示</summary>
-          {THAI_READING_GUIDE.map(line => <p key={line}>{line}</p>)}
-          <p>发音为泰语合成语音。字母读音仅作辅助，跟着声音模仿即可。</p>
-        </details>
-      </div>
-      <div aria-live="polite" style={{ ...subtle, margin: '12px 0', minHeight: 24, color: audio.status === 'error' ? '#B45309' : COLORS.textLight }}>
-        {audio.status === 'error' ? audio.message : audio.status === 'loading' ? '声音加载中…' : audio.status === 'playing' ? '正在播放 · 再点同一个喇叭可停止' : '可以多听几次，不用一次记住。'}
-      </div>
-      {progressStatus}
-      {practiced && <p style={subtle}>最近读过：{practiced.practiced_on} · 泰国时间</p>}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginTop: 16 }}>
-        <button style={{ ...button, background: COLORS.primaryDark, borderColor: COLORS.primaryDark, color: '#fff', opacity: saving || loading || loadError ? 0.55 : 1 }} disabled={saving || loading || loadError} onClick={markPracticed}>{saving ? '正在保存…' : '今天读过了'}</button>
-        <a style={{ ...button, textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }} href={day < 30 ? `#thai-day=${day + 1}` : '#thai'}>{day < 30 ? '下一天 →' : '回到目录'}</a>
-      </div>
-      {notice?.day === day && <p role={notice.ok ? 'status' : 'alert'} style={{ ...subtle, color: notice.ok ? '#15803D' : '#B45309' }}>{notice.text}</p>}
-      <p style={{ ...subtle, fontSize: 12, marginTop: 14 }}>只记录读过，不打分，也不要求连续打卡。</p>
-    </>}
+    <ThaiHome tab={route.tab} {...shared} resumeDay={nextLessonDay(practiceRows)} quizHistory={quizHistory} statusSlot={statusSlot} />
   </main>
 }

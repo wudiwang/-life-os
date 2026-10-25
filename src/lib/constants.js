@@ -218,7 +218,7 @@ export const ALL_TABLES = [
   'journal_threads', 'insights',
   'okr_objectives', 'weekly_actions', 'weekly_action_logs', 'principle_logs',
   'trade_patterns', 'trade_pattern_updates',
-  'thai_learning_progress',
+  'thai_learning_progress', 'thai_item_progress', 'thai_quiz_results',
 ]
 
 // OKR 层级。结果指标只在回顾时看，每日/每周只考核 weekly_actions 的动作完成度。

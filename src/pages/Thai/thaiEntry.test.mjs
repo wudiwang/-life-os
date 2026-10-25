@@ -5,7 +5,7 @@ import { NAV_ITEMS, ALL_TABLES } from '../../lib/constants.js'
 
 test('Thai navigation and scoped progress backup are registered', () => {
   assert.ok(NAV_ITEMS.some(i => i.key === 'thai'))
-  assert.ok(ALL_TABLES.includes('thai_learning_progress'))
+  for (const t of ['thai_learning_progress', 'thai_item_progress', 'thai_quiz_results']) assert.ok(ALL_TABLES.includes(t), t)
 })
 test('Thai page is reachable from registry and dashboard', () => {
   assert.match(readFileSync(new URL('../registry.js', import.meta.url), 'utf8'), /thai:\s*ThaiPage/)

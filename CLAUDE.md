@@ -29,7 +29,7 @@ git push origin main → Vercel 自动构建发布（约1-2分钟）
 | 交易形态库 | TradePatterns/TradePatternsPage | 交易项目 `research/ideas` 的云端镜像：原图/原话、事实、规律、待定项、研究时间线；网页新增进入待写回队列 |
 | 健康 | Health/HealthPage | 4 tabs：体成分(BodyTab)/血液检查(BloodTab)/指标记录/体检报告；指标定义在 constants 的 METRIC_TYPES、BODY_METRICS、BLOOD_PANEL |
 | 一周食谱 | MealPlan/MealPlanPage | 定量版健康生酮周食谱：每样食材给克数，营养按 `FOODS` 每100g 值自动汇总（每餐/全天/周均/采购清单），每天一道空气炸锅菜；PC 七日网格/移动端按天切换。数据 `lib/ketoPlan.js`，与大图 `public/keto-week.png` 同源；改数据后跑 `node scripts/render-keto-poster.mjs` 重出图 |
-| 泰语学习 | Thai/ThaiPage | 30 天生活口语课(thaiLessons.js + 预生成音频 public/audio/thai，进度 thai_learning_progress) + **专题**(thaiTopics.js，`#thai-topic=travel`)：按场景的词汇/句式/对话，页面只显示中文+读音+逐词「读音→意思」对照，不显示泰文；`th` 字段留作以后生成音频 |
+| 泰语学习 | Thai/ThaiPage | 30 天口语课：页面**不显示泰文**，只显示读音 + 逐词对齐的中文（`thaiGloss.js`，叠加在 `thaiLessons.js` 上，后者的泰文只用于音频，改它要重跑 `generate-thai-audio.py`）。每课：表情场景卡/认词/句式/对话/作业；逐项「掌握」标记(thai_item_progress，key 按读音去重，答错自动取消掌握)；作业与复习成绩(thai_quiz_results)；首页三 tab：课程(30 天掌握地图)/单词本(每日新词统计)/复习(按天数范围出题，错题优先)。出题逻辑纯函数在 `thaiStudy.js`。另有**专题**(thaiTopics.js + ThaiTopicView，`#thai-topic=travel`，课程 tab 里入口)：按场景的词汇/句式/对话速查 |
 | 习惯 | Habits/HabitsPage | 7天打卡网格 + streak；habit_logs 以 (habit_id, log_date) 判打卡 |
 | 目标 | Goals/GoalsPage | 目标卡片 + 详情弹窗(里程碑/检查点自检/过程记录/复盘) |
 | 工作 | Work/WorkPage | 4 tabs：待办/日志/职责档案(work_profile.field)/人际地图 |

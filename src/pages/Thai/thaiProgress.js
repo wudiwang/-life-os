@@ -25,3 +25,9 @@ export function practiceRow(day, now = new Date()) {
   if (!Number.isInteger(day) || day < 1 || day > 30) throw new Error('课号应为1至30')
   return { course_version: THAI_COURSE_VERSION, lesson_day: day, practiced_at: now.toISOString(), practiced_on: bangkokDay(now) }
 }
+
+const THAI_TABS = ['course', 'words', 'review']
+export function parseThaiTab(hash) {
+  const value = new URLSearchParams(String(hash).replace(/^#/, '')).get('thai-tab')
+  return THAI_TABS.includes(value) ? value : 'course'
+}
