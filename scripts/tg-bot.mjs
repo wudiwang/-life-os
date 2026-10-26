@@ -8,7 +8,7 @@ import { readFileSync, writeFileSync, existsSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 import { buildRefinePrompt, parseRefineResult } from './refine-prompt.mjs'
-import { runLocalBrain, runLocalBrainSync } from './local-brain.mjs'
+import { BRAIN_MODEL, runLocalBrain, runLocalBrainSync } from './local-brain.mjs'
 import { buildQuickKeyboard } from './tg-keyboard.mjs'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
@@ -116,7 +116,7 @@ function askClaude(chatId, userText) {
       workdir: root,
       session_id: sid || null,
       timeout: 600,
-      model: 'opus',
+      model: BRAIN_MODEL,
     }, { timeoutMs: 610000 })
     if (result.sessionId) { sessions[chatId] = result.sessionId; saveSessions() }
     console.log(`🧠 本机大脑：${result.provider}`)
@@ -420,6 +420,7 @@ async function brainAsync(prompt, timeoutMs = 300000) {
     mode: 'text',
     prompt,
     timeout: Math.ceil(timeoutMs / 1000),
+    model: BRAIN_MODEL,
   }, { timeoutMs: timeoutMs + 10000 })
   console.log(`🧠 本机大脑：${result.provider}`)
   return result.text

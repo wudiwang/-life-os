@@ -18,7 +18,7 @@ import { readFileSync } from 'node:fs'
 import { execFileSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
-import { runLocalBrain } from './local-brain.mjs'
+import { BRAIN_MODEL, runLocalBrain } from './local-brain.mjs'
 import { loadProjects } from './project-sync-config.mjs'
 import { replaceDigestBlock } from '../src/lib/controlCenter.js'
 
@@ -127,7 +127,7 @@ async function brainAsync(prompt, timeoutMs = 300000) {
     mode: 'text',
     prompt,
     timeout: Math.ceil(timeoutMs / 1000),
-    model: 'opus',
+    model: BRAIN_MODEL,
   }, { timeoutMs: timeoutMs + 10000 })
   log(`本机大脑：${result.provider}`)
   return result.text

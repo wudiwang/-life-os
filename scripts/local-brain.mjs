@@ -4,6 +4,9 @@ import { join } from 'node:path'
 
 const DEFAULT_SCRIPT = 'C:\\Users\\ADMIN\\Projects\\lh-pm-workbench\\scripts\\local_brain.py'
 
+// 人生 OS 的 AI 统一钉死 Opus 5.5：别名 'opus' 会在新版发布时自动跳走。
+export const BRAIN_MODEL = 'claude-opus-5-5'
+
 export function buildLocalBrainInvocation(env = process.env) {
   const installedPython = join(env.LOCALAPPDATA || 'C:\\Users\\ADMIN\\AppData\\Local', 'Programs', 'Python', 'Python312', 'python.exe')
   const command = env.PYTHON_CMD || (existsSync(installedPython) ? installedPython : 'python')
