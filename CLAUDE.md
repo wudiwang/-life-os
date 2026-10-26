@@ -60,7 +60,7 @@ git push origin main → Vercel 自动构建发布（约1-2分钟）
 
 ## AI 的三条路（IMPORTANT：网页/手机的 AI 一律走本机订阅，不走 API 计费）
 
-1. **队列（主路）**：网页/手机 → `ai_jobs` 表（status=pending）→ 本机 `npm run bot` 里的 worker 轮询取走 → Codex Max（Claude CLI 可选兜底）→ 结果写回 → 前端轮询拿到。
+1. **队列（主路）**：网页/手机 → `ai_jobs` 表（status=pending）→ 本机 `npm run bot` 里的 worker 轮询取走 → 本机 Claude Code（订阅登录，2026-10-22 起唯一 provider，Codex 已弃用；路由在 lh-pm-workbench/scripts/local_brain.py）→ 结果写回 → 前端轮询拿到。
    - 不需要内网穿透/公网 IP，手机在外网也能用；**前提是本机开着且 bot 在跑**，否则任务只是排队。
    - `kind` 区分活儿：`refine_note`（快记提炼，结果进 `ai_jobs.result` 等用户确认）、`health_advice`（体成分建议，直接写 `ai_reviews`）。新增 kind 在 `scripts/tg-bot.mjs` 的 `runJob` 里加分支。
    - 提示词与结果解析：`scripts/refine-prompt.mjs`。
@@ -73,7 +73,7 @@ git push origin main → Vercel 自动构建发布（约1-2分钟）
 
 ```
 Windows 计划任务 life-os-daily-sync（每天 22:07）
-  → 脚本先只读采集 git log/未提交改动/改动量，再交 Codex Max（Claude 可选兜底）做纯文本总结
+  → 脚本先只读采集 git log/未提交改动/改动量，再交本机 Claude Code（订阅）做纯文本总结
   → 产出 JSON {active,summary,win,next_action,insight,highlights}
   → 写 daily_focus（对应 track 的格子）+ journal_threads.next_action + insights
   → TG 推一条摘要

@@ -1,5 +1,5 @@
 // 「大仙」Telegram 机器人：人生 OS 的对话入口
-// 链路：TG 长轮询收消息 → 本机 Codex Max（Claude 可选兜底）→ scripts/db.mjs 读写 Supabase → 回复 TG
+// 链路：TG 长轮询收消息 → 本机 Claude Code（订阅，经 local-brain）→ scripts/db.mjs 读写 Supabase → 回复 TG
 // 用法：npm run bot   （Ctrl+C 停止）
 // .env 需要：TELEGRAM_BOT_TOKEN（BotFather 的 token）、TG_ALLOWED_CHAT_ID（你的 chat id，首次运行时会打印）
 // 会话延续：每个 chat 的 provider-qualified session id 存在 scripts/.tg-session.json；TG 里发 /new 可开启新会话。
@@ -518,7 +518,7 @@ async function workerLoop() {
     console.log('⚠️ .env 缺 Supabase 密钥，AI 提炼 worker 未启动')
     return
   }
-  console.log('⚙️ AI 提炼 worker 已启动（轮询 ai_jobs，走本机 Codex Max / Claude 兜底）')
+  console.log('⚙️ AI 提炼 worker 已启动（轮询 ai_jobs，走本机 Claude Code 订阅）')
   let quiet = 0 // 建表前会一直报错，降噪：连续失败时拉长间隔、少刷屏
   for (;;) {
     let wait = 3000
