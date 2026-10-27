@@ -34,6 +34,7 @@ git push origin main → Vercel 自动构建发布（约1-2分钟）
 | 目标 | Goals/GoalsPage | 目标卡片 + 详情弹窗(里程碑/检查点自检/过程记录/复盘) |
 | 工作 | Work/WorkPage | 4 tabs：待办/日志/职责档案(work_profile.field)/人际地图 |
 | 探索世界 | Explore/ExplorePage | 分类卡片流，照片走 uploadFile |
+| 探索世界计划 | ExplorePlans/ExplorePlansPage | 行程清单：分类打卡、自己的照片、感想。表 `explore_plans` / `explore_plan_items`（v18） |
 | 第二大脑 | Knowledge/KnowledgePage | Markdown 笔记(react-markdown) + 搜索 |
 | 情感关系 | Relations/RelationsPage | 三类人档案 + 互动记录 + 生日/60天失联提醒 |
 | AI 分析 | AI/AIPage | 摘要构建在 lib/aiSummary.js → POST /api/ai-review |
