@@ -422,6 +422,8 @@ function ItemSheet({ item, mobile, onPatch, onClose, onToggle, onEdit, onDelete 
   useEffect(() => { closeRef.current = close }, [close])
 
   useEffect(() => {
+    // StrictMode 会先跑一次 cleanup。alive 必须在 setup 里重新打开，否则「已保存」永远写不回去。
+    alive.current = true
     const prev = document.body.style.overflow
     document.body.style.overflow = 'hidden'
     const onKey = event => { if (event.key === 'Escape') closeRef.current() }
