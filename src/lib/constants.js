@@ -29,6 +29,7 @@ export const NAV_ITEMS = [
   { key: 'goals', label: '目标', icon: '🎯' },
   { key: 'work', label: '工作', icon: '💼' },
   { key: 'explore', label: '探索世界', icon: '🧭' },
+  { key: 'explorePlans', label: '探索世界计划', icon: '🗺️' },
   { key: 'knowledge', label: '第二大脑', icon: '🧠' },
   { key: 'thai', label: '泰语学习', icon: '🇹🇭' },
   { key: 'relations', label: '情感关系', icon: '💞' },
@@ -130,6 +131,15 @@ export const EXPLORE_CATEGORIES = [
   { key: 'other', label: '其他', icon: '📌' },
 ]
 
+// 探索世界计划里的清单分类（表 explore_plan_items.category）
+export const PLAN_ITEM_CATEGORIES = [
+  { key: 'food', label: '美食', icon: '🍜', tint: '#FDE68A', tint2: '#F59E0B' },
+  { key: 'nightlife', label: '夜生活', icon: '🌙', tint: '#C4B5FD', tint2: '#6D28D9' },
+  { key: 'culture', label: '文化景点', icon: '🛕', tint: '#FDBA74', tint2: '#C2410C' },
+  { key: 'experience', label: '体验', icon: '🎟️', tint: '#93C5FD', tint2: '#1D4ED8' },
+  { key: 'daily', label: '日常', icon: '🚲', tint: '#6EE7B7', tint2: '#047857' },
+]
+
 export const REL_TYPES = [
   { key: 'family', label: '亲情', icon: '👨‍👩‍👧', color: COLORS.orange },
   { key: 'friend', label: '友情', icon: '🤝', color: COLORS.teal },
@@ -211,7 +221,7 @@ export const ALL_TABLES = [
   'health_metrics', 'health_reports', 'habits', 'habit_logs',
   'goals', 'goal_milestones', 'goal_logs',
   'work_todos', 'todo_day_entries', 'work_logs', 'work_profile', 'work_contacts',
-  'explore_records', 'knowledge_notes',
+  'explore_records', 'explore_plans', 'explore_plan_items', 'knowledge_notes',
   'relation_people', 'relation_logs',
   'journal_entries', 'ai_reviews', 'life_stage',
   'ai_jobs', 'blood_metrics', 'daily_focus',

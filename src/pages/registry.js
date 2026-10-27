@@ -8,6 +8,7 @@ import { HabitsPage } from './Habits/HabitsPage'
 import { GoalsPage } from './Goals/GoalsPage'
 import { WorkPage } from './Work/WorkPage'
 import { ExplorePage } from './Explore/ExplorePage'
+import { ExplorePlansPage } from './ExplorePlans/ExplorePlansPage'
 import { KnowledgePage } from './Knowledge/KnowledgePage'
 import { RelationsPage } from './Relations/RelationsPage'
 import { JournalPage } from './Journal/JournalPage'
@@ -28,6 +29,7 @@ export const PAGES = {
   goals: GoalsPage,
   work: WorkPage,
   explore: ExplorePage,
+  explorePlans: ExplorePlansPage,
   knowledge: KnowledgePage,
   thai: ThaiPage,
   relations: RelationsPage,
