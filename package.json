@@ -14,6 +14,7 @@
     "sync": "node scripts/sync-project-progress.mjs",
     "brief": "node scripts/daily-brief.mjs",
     "sql": "node scripts/run-sql.mjs",
+    "export": "node scripts/export-local.mjs",
     "sync:patterns": "node scripts/sync-trade-patterns.mjs",
     "test:patterns": "node --test scripts/trade-patterns-core.test.mjs src/pages/TradePatterns/tradePatternUtils.test.mjs",
     "test:thai": "node --test src/pages/Thai/*.test.mjs scripts/tg-keyboard.test.mjs"

@@ -54,6 +54,10 @@ git push origin main → Vercel 自动构建发布（约1-2分钟）
 - 附件上传：`dataStore.uploadFile(file)` → Supabase Storage bucket `attachments`（演示模式转 base64，限 1.5MB）。
 - 全部表清单：`constants.ALL_TABLES`（备份导出用，新表要同步加）。
 
+## 本地导出（scripts/export-local.mjs）
+
+`npm run export` 把云端全部表（`constants.ALL_TABLES`）只读拉到本机 `../life-os-data`（`--out <目录>` 可改）：`json/` 每表全量原始数据 + `每日一记/`（按月）+ `第二大脑/`（每条笔记一个 .md，按分类）+ `启示.md` + `README.md`（条数清单）。每次是完整快照；目标目录有非本脚本生成的文件会拒绝写入。附件仍在云端只留链接。导出目录在项目外，个人数据不会进 git。
+
 ## Serverless (api/)
 
 - `api/ai-review.js`：POST {module, dataSummary, question?} → Claude API（model: claude-opus-4-8），返回 {content}。密钥读 `process.env.CLAUDE_API_KEY`。
