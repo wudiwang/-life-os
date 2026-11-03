@@ -7,6 +7,7 @@ dist
 .vercel
 .worktrees/
 scripts/.tg-session.json
+scripts/.tg-photos/
 migration/
 scripts/.bot.lock
 

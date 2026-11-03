@@ -4,15 +4,17 @@
 // .env 需要：TELEGRAM_BOT_TOKEN（BotFather 的 token）、TG_ALLOWED_CHAT_ID（你的 chat id，首次运行时会打印）
 // 会话延续：每个 chat 的 provider-qualified session id 存在 scripts/.tg-session.json；TG 里发 /new 可开启新会话。
 
-import { readFileSync, writeFileSync, existsSync } from 'node:fs'
+import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 import { buildRefinePrompt, parseRefineResult } from './refine-prompt.mjs'
 import { BRAIN_MODEL, runLocalBrain, runLocalBrainSync } from './local-brain.mjs'
 import { buildQuickKeyboard } from './tg-keyboard.mjs'
+import { largestPhoto, groupMessages, buildPhotoPrompt } from './tg-photo.mjs'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const SESSION_FILE = join(root, 'scripts', '.tg-session.json')
+const PHOTO_DIR = join(root, 'scripts', '.tg-photos') // 已 gitignore，照片只留在本机
 
 const env = {}
 for (const line of readFileSync(join(root, '.env'), 'utf8').split(/\r?\n/)) {
@@ -76,6 +78,7 @@ work_todos(title,priority:high/mid/low,due_date,status:open/done) + work_logs(lo
 explore_records(title,category:food/travel/experience/insight/other,record_date,location,rating,content) 探索 | knowledge_notes(title,category,tags,content,source) 第二大脑
 relation_people(name,rel_type:family/friend/love,birthday,closeness) + relation_logs(person_id,log_date,event,feeling) 情感 | ai_reviews(module,prompt_summary,content) AI分析历史 | life_stage(field:principle/stage/focus/advice,content) 人生阶段
 okr_objectives(level:year/quarter,period,title,track,why,metric,metric_target,metric_current,status) 年度/季度目标 | weekly_actions(title,detail,track,objective_id,per_week,weekdays,active,sort_order) 每周行为契约 + weekly_action_logs(action_id,log_date) 打卡 | principle_logs(log_date,content,skipped) 核心原则每日落实 | daily_focus(log_date,track:work/trade/life,content,win) 每日三向
+shape_food_logs(log_date,meal:breakfast/lunch/dinner/snack,items,kcal,protein_g,fat_g,net_carb_g,basis:label/estimate,source,note) 塑形饮食 | shape_workouts(log_date,kind:strength/cardio/walk/other,title,detail,duration_min,kcal) 塑形训练 | shape_daily(log_date 唯一,weight_kg,waist_cm,steps,sleep_h,active_kcal,feeling,coach_note) 塑形每日
 
 ## 行为准则
 1. 用户随口说的事，主动判断该进哪张表：如"今天心情不错，跑了5公里" → journal_entries 记一笔 + 若有跑步习惯则 habit_logs 打卡；拿不准就问一句。
@@ -100,7 +103,8 @@ okr_objectives(level:year/quarter,period,title,track,why,metric,metric_target,me
    - 他讲到今天把核心原则用在了哪件事上 → 写 principle_logs(log_date, content)。一天一条，已有就 update。
    - 纯数字打卡和"原则 xxx"由机器人本地快路处理，不会进到你这儿；你只管自然语言那部分。
    - 定新目标/新动作时提醒他：每日只考核动作做没做，别把结果指标（收入、体脂数字）拿来每天自评——裁判和运动员是同一个人，那样必然放水或弃疗。动作数量和执行率成反比，能压成一条就别写四条。
-13. 他现在是远程项目经理，最大的压力源是"远程工作的价值不可见"。当他表达工作焦虑时，别只安慰——把话题引到"这周的可见交付物做了没有"（周报、项目过账），那才是这类焦虑的正面战场。`
+13. 他现在是远程项目经理，最大的压力源是"远程工作的价值不可见"。当他表达工作焦虑时，别只安慰——把话题引到"这周的可见交付物做了没有"（周报、项目过账），那才是这类焦虑的正面战场。
+14. 健康塑形是当前唯一主线（最高优先）：他发食物照片、说吃了什么、说运动内容、报体重/腰围/步数/睡眠、发手表或血糖截图时，先读 docs/塑形数据录入总则.md 和 docs/健康塑形计划.md，严格按总则计算、写 shape_* 三张表、按模板回复，并更新当天 shape_daily.coach_note。`
 
 function askClaude(chatId, userText) {
   let sid = sessions[chatId]
@@ -127,10 +131,25 @@ function askClaude(chatId, userText) {
   }
 }
 
-async function handleMessage(msg) {
+// 下载 TG 照片到本机，返回绝对路径；Claude Code 的 Read 工具能直接看图
+async function downloadPhoto(sizes, name) {
+  const best = largestPhoto(sizes)
+  if (!best) throw new Error('照片为空')
+  const info = await tg('getFile', { file_id: best.file_id })
+  if (!info.ok || !info.result?.file_path) throw new Error('getFile 失败')
+  const resp = await fetch(`https://api.telegram.org/file/bot${TOKEN}/${info.result.file_path}`)
+  if (!resp.ok) throw new Error(`照片下载失败 HTTP ${resp.status}`)
+  const dir = join(PHOTO_DIR, new Date().toLocaleDateString('sv-SE'))
+  mkdirSync(dir, { recursive: true })
+  const file = join(dir, `${name}.jpg`)
+  writeFileSync(file, Buffer.from(await resp.arrayBuffer()))
+  return file
+}
+
+async function handleMessage({ msg, photos = [], caption = '' }) {
   const chatId = String(msg.chat.id)
-  const text = (msg.text || '').trim()
-  if (!text) return
+  const text = caption
+  if (!text && !photos.length) return
 
   if (!ALLOWED) {
     console.log(`⚠️ 收到来自 chat_id=${chatId}（${msg.from?.first_name || ''} @${msg.from?.username || ''}）的消息。`)
@@ -140,6 +159,24 @@ async function handleMessage(msg) {
   }
   if (chatId !== ALLOWED) {
     console.log(`🚫 拒绝陌生 chat_id=${chatId}`)
+    return
+  }
+
+  if (photos.length) {
+    await tg('sendChatAction', { chat_id: chatId, action: 'typing' })
+    let paths
+    try {
+      paths = []
+      for (const [i, sizes] of photos.entries()) paths.push(await downloadPhoto(sizes, `${msg.message_id}-${i + 1}`))
+    } catch (e) {
+      console.error('照片下载失败：', e.message)
+      await reply(chatId, '照片没收下来（网络问题），再发一次试试，或者直接用文字描述。')
+      return
+    }
+    console.log(`📷 ${paths.length} 张照片 ${text.slice(0, 40)}`)
+    const { text: answer } = askClaude(chatId, buildPhotoPrompt({ paths, caption: text }))
+    console.log(`🤖 ${answer.slice(0, 80)}`)
+    await reply(chatId, answer)
     return
   }
 
@@ -591,9 +628,10 @@ for (;;) {
     const resp = await fetch(`${API}/getUpdates?timeout=50&offset=${offset}`, { signal: AbortSignal.timeout(60000) })
     const data = await resp.json()
     if (data.ok) {
-      for (const upd of data.result) {
-        offset = upd.update_id + 1
-        if (upd.message) await handleMessage(upd.message).catch(e => console.error('处理消息出错：', e.message))
+      for (const upd of data.result) offset = Math.max(offset, upd.update_id + 1)
+      // 同一相册的多张照片会在同一批里到达，合并成一次处理，避免一张图问一次大脑
+      for (const unit of groupMessages(data.result.map(u => u.message).filter(Boolean))) {
+        await handleMessage(unit).catch(e => console.error('处理消息出错：', e.message))
       }
     }
   } catch (e) {

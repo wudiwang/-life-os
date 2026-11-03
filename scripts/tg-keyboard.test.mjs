@@ -2,12 +2,12 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { buildQuickKeyboard } from './tg-keyboard.mjs'
 
-test('keeps the four existing Web App entries and persistent keyboard options', () => {
+test('opens body shaping first, keeps the other Web App entries and persistent keyboard options', () => {
   const keyboard = buildQuickKeyboard('https://life-os.example')
 
   assert.deepEqual(keyboard.keyboard.slice(0, 2), [
     [
-      { text: '🏠 看板', web_app: { url: 'https://life-os.example/?page=dashboard' } },
+      { text: '💪 塑形', web_app: { url: 'https://life-os.example/?page=shape' } },
       { text: '📔 随笔', web_app: { url: 'https://life-os.example/?page=journal' } },
     ],
     [

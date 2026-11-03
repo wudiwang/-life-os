@@ -17,7 +17,8 @@
     "export": "node scripts/export-local.mjs",
     "sync:patterns": "node scripts/sync-trade-patterns.mjs",
     "test:patterns": "node --test scripts/trade-patterns-core.test.mjs src/pages/TradePatterns/tradePatternUtils.test.mjs",
-    "test:thai": "node --test src/pages/Thai/*.test.mjs scripts/tg-keyboard.test.mjs"
+    "test:thai": "node --test src/pages/Thai/*.test.mjs scripts/tg-keyboard.test.mjs",
+    "test:shape": "node --test src/pages/Shape/*.test.mjs scripts/tg-photo.test.mjs scripts/tg-keyboard.test.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.103.0",

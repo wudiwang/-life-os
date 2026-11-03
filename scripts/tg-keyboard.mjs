@@ -20,7 +20,7 @@ export function buildQuickKeyboard(webURL) {
 
   return {
     keyboard: [
-      [{ text: '🏠 看板', web_app: page('dashboard') }, { text: '📔 随笔', web_app: page('journal') }],
+      [{ text: '💪 塑形', web_app: page('shape') }, { text: '📔 随笔', web_app: page('journal') }],
       [{ text: '❤️ 健康', web_app: page('health') }, { text: '🧠 第二大脑', web_app: page('knowledge') }],
       [{ text: '🇹🇭 泰语学习', web_app: page('thai') }, { text: '打卡' }],
     ],

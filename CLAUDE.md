@@ -19,11 +19,19 @@
 git push origin main → Vercel 自动构建发布（约1-2分钟）
 ```
 
+## 当前主线：健康塑形（2026-11-03 起，先试一周）
+
+- 侧栏只常驻 `constants.PRIMARY_NAV`（现为 `['shape']`），其余 16 个模块折叠在「更多模块」里，功能和数据都在，只是不打扰。要恢复某个模块常驻，把它的 key 加进 `PRIMARY_NAV`。默认首页也是 `shape`（useUIStore / App.jsx 兜底）。
+- 页面 `Shape/ShapePage` **只做呈现**；纯计算在 `Shape/shapeCalc.js`（`npm run test:shape`），目标数字在 `Shape/shapePlan.js`，与 `docs/健康塑形计划.md` 同步修改。
+- 数据表 `shape_food_logs` / `shape_workouts` / `shape_daily`（`supabase/v18_shape.sql`）。**录入只走聊天**：大仙按 `docs/塑形数据录入总则.md` 估算热量、运动消耗并写库，再写当天 `shape_daily.coach_note`。
+- 大仙收照片：`tg-bot.mjs` 下载到 `scripts/.tg-photos/`（gitignore），相册合并成一次（`tg-photo.mjs`），把本机路径交给本机大脑用 Read 看图。
+
 ## 模块地图（src/pages/ + registry.js 登记）
 
 | 页面 | 文件 | 说明 |
 |---|---|---|
-| 人生看板 | Dashboard/DashboardPage | **核心原则 + 每日落实**(PrincipleCard，principle_logs) + **本周行为契约**(WeeklyActionsCard) + **每日三向**(DailyFocusCard，daily_focus) + 今日概览 + 人生阶段面板(life_stage) + 检查点提醒 |
+| 健康塑形 | Shape/ShapePage | 当前唯一常驻模块。今日四项（热量/蛋白/净碳/步数）达标、能量缺口估算、教练点评、饮食与训练明细、本周 7 天表、体重 7 日均趋势 |
+| 人生看板 | Dashboard/DailyBoard（三大主线卡片）；「生活概览」是 Dashboard/DashboardPage | **核心原则 + 每日落实**(PrincipleCard，principle_logs) + **本周行为契约**(WeeklyActionsCard) + **每日三向**(DailyFocusCard，daily_focus) + 今日概览 + 人生阶段面板(life_stage) + 检查点提醒 |
 | 人生 OKR | OKR/OKRPage | 年度/季度 Objective(okr_objectives) + 拆出的每周行为契约(weekly_actions)。**结果指标只在回顾时看，每日只考核动作做没做**——个人自定 KPI 裁判即运动员，用结果指标每天自评必然放水或弃疗 |
 | 每日一记 | Journal/JournalPage | 快记(AI 提炼后确认入库) + **启示条**(InsightBar，insights 表) + **主线面板**(ThreadsPanel，journal_threads 表) + 心情(1-5)/感恩/心情曲线 + 按天折叠的笔记流 |
 | 交易形态库 | TradePatterns/TradePatternsPage | 交易项目 `research/ideas` 的云端镜像：原图/原话、事实、规律、待定项、研究时间线；网页新增进入待写回队列 |

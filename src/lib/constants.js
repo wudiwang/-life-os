@@ -18,6 +18,7 @@ export const COLORS = {
 }
 
 export const NAV_ITEMS = [
+  { key: 'shape', label: '健康塑形', icon: '💪' },
   { key: 'dashboard', label: '人生看板', icon: '🏠' },
   { key: 'overview', label: '生活概览', icon: '🌱' },
   { key: 'okr', label: '人生 OKR', icon: '🧗' },
@@ -43,6 +44,9 @@ export const TRADE_PATTERN_STATUS = [
   { key: 'invalidated', label: '已证伪', color: COLORS.red },
   { key: 'archived', label: '已归档', color: COLORS.orange },
 ]
+
+// 侧栏常驻显示的模块（像搭积木：先只留当前主线，其余折叠在「更多模块」里，功能都还在）
+export const PRIMARY_NAV = ['shape']
 
 export const PAGE_TITLES = Object.fromEntries(NAV_ITEMS.map(i => [i.key, `${i.icon} ${i.label}`]))
 
@@ -219,6 +223,7 @@ export const ALL_TABLES = [
   'okr_objectives', 'weekly_actions', 'weekly_action_logs', 'principle_logs',
   'trade_patterns', 'trade_pattern_updates',
   'thai_learning_progress', 'thai_item_progress', 'thai_quiz_results',
+  'shape_food_logs', 'shape_workouts', 'shape_daily',
 ]
 
 // OKR 层级。结果指标只在回顾时看，每日/每周只考核 weekly_actions 的动作完成度。

@@ -6,7 +6,7 @@ import { PAGES } from './pages/registry'
 export default function App() {
   useEffect(bindPageHistory, [])
   const currentPage = useUIStore(s => s.currentPage)
-  const Page = PAGES[currentPage] || PAGES.dashboard
+  const Page = PAGES[currentPage] || PAGES.shape
   return (
     <MainLayout>
       <Page />

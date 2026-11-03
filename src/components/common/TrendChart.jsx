@@ -1,7 +1,7 @@
 import { COLORS } from '../../lib/constants'
 
 // 轻量 SVG 折线图，无第三方依赖
-// data: [{ x: '2026-07-01', y: 70.5, y2?: 110 }]
+// data: [{ x: '2026-07-01', y: 70.5, y2?: 110, tip?: '悬停提示' }]
 export function TrendChart({ data, color = COLORS.primary, color2 = COLORS.orange, height = 160, unit = '' }) {
   if (!data || data.length === 0) {
     return <div style={{ color: COLORS.textLight, fontSize: 13, padding: 20, textAlign: 'center' }}>暂无数据</div>
@@ -42,7 +42,12 @@ export function TrendChart({ data, color = COLORS.primary, color2 = COLORS.orang
         </text>
       ))}
       <polyline points={line('y')} fill="none" stroke={color} strokeWidth="2" />
-      {data.map((d, i) => d.y != null && <circle key={i} cx={px(i)} cy={py(d.y)} r="3" fill={color} />)}
+      {data.map((d, i) => d.y != null && (
+        <g key={i}>
+          <circle cx={px(i)} cy={py(d.y)} r="3" fill={color} />
+          {d.tip && <circle cx={px(i)} cy={py(d.y)} r="10" fill="transparent"><title>{d.tip}</title></circle>}
+        </g>
+      ))}
       {data.some(d => d.y2 != null) && (
         <>
           <polyline points={line('y2')} fill="none" stroke={color2} strokeWidth="2" />

@@ -1,12 +1,12 @@
 import { create } from 'zustand'
 
 // 深链接：TG 键盘按钮/外部链接用 ?page=health 直接落到指定页。
-// 非法值不用在这里校验——App.jsx 的 PAGES[x] || PAGES.dashboard 已经兜底。
+// 非法值不用在这里校验——App.jsx 的 PAGES[x] || PAGES.shape 已经兜底。
 function initialPage() {
   try {
-    return new URLSearchParams(window.location.search).get('page') || 'dashboard'
+    return new URLSearchParams(window.location.search).get('page') || 'shape'
   } catch {
-    return 'dashboard'
+    return 'shape'
   }
 }
 
