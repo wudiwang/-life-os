@@ -6,15 +6,23 @@
 //   node scripts/db.mjs remove <table> <id>
 // 输出：JSON（stdout）。表清单见项目 CLAUDE.md / supabase/v1_init.sql。
 
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
-const env = {}
-for (const line of readFileSync(join(root, '.env'), 'utf8').split(/\r?\n/)) {
-  const m = line.match(/^([A-Z_]+)=(.*)$/)
-  if (m) env[m[1]] = m[2].trim()
+// 本机读 .env；云端会话没有 .env 时读环境变量（在云端环境设置里配 VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY）
+const env = { VITE_SUPABASE_URL: process.env.VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY: process.env.VITE_SUPABASE_ANON_KEY }
+const envFile = join(root, '.env')
+if (existsSync(envFile)) {
+  for (const line of readFileSync(envFile, 'utf8').split(/\r?\n/)) {
+    const m = line.match(/^([A-Z_]+)=(.*)$/)
+    if (m) env[m[1]] = m[2].trim()
+  }
+}
+if (!env.VITE_SUPABASE_URL || !env.VITE_SUPABASE_ANON_KEY || /[^\x21-\x7e]/.test(env.VITE_SUPABASE_ANON_KEY)) {
+  console.error('缺少有效的 VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY（.env 或环境变量；密钥里不能有中文、空格或备注）')
+  process.exit(1)
 }
 const BASE = env.VITE_SUPABASE_URL
 const KEY = env.VITE_SUPABASE_ANON_KEY
