@@ -1,11 +1,14 @@
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import test from 'node:test'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 
 import {
   buildLocalBrainInvocation,
+  defaultLocalBrainScript,
+  localBrainEnv,
   parseLocalBrainResponse,
   runLocalBrainSync,
 } from './local-brain.mjs'
@@ -21,6 +24,28 @@ test('builds a shell-free invocation to the shared Python provider', () => {
     command: 'C:\\Python312\\python.exe',
     args: ['C:\\work bench\\scripts\\local_brain.py'],
   })
+})
+
+test('non-Windows defaults to python3 and ~/Projects/lh-pm-workbench', () => {
+  const got = buildLocalBrainInvocation({ HOME: '/Users/me' }, 'darwin')
+  assert.deepEqual(got, {
+    command: 'python3',
+    args: ['/Users/me/Projects/lh-pm-workbench/scripts/local_brain.py'],
+  })
+  assert.equal(defaultLocalBrainScript('win32'), 'C:\\Users\\ADMIN\\Projects\\lh-pm-workbench\\scripts\\local_brain.py')
+})
+
+test('PYTHON_CMD / LOCAL_BRAIN_SCRIPT can come from .env, process env wins', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'life-os-brain-'))
+  try {
+    writeFileSync(join(dir, '.env'), 'PYTHON_CMD=/opt/py/python3\nLOCAL_BRAIN_SCRIPT=/x/brain.py\nOTHER_SECRET=nope\n')
+    const got = localBrainEnv(dir, { LOCAL_BRAIN_SCRIPT: '/override.py' })
+    assert.equal(got.PYTHON_CMD, '/opt/py/python3')
+    assert.equal(got.LOCAL_BRAIN_SCRIPT, '/override.py')
+    assert.equal(got.OTHER_SECRET, undefined)
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
 })
 
 test('parses provider-qualified sessions', () => {

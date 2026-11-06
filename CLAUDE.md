@@ -51,7 +51,7 @@ git push origin main → Vercel 自动构建发布（约1-2分钟）
 
 ## 交易形态库双向同步
 
-- 交易项目 `C:\Users\ADMIN\trade\research\ideas` 是唯一研究档案源；人生 OS 的 `trade_patterns` / `trade_pattern_updates` 只作公网镜像和待写回队列。
+- 交易项目的 `research/ideas`（不在 trade 的 git 里，只存在本机）是唯一研究档案源；trade 路径与每晚同步共用 `sync-projects.local.json`/`TRADE_PROJECT_PATH`，Windows 未配置时默认 `C:\Users\ADMIN\trade`，Mac 为 `~/Projects/trade`；人生 OS 的 `trade_patterns` / `trade_pattern_updates` 只作公网镜像和待写回队列。
 - `npm run sync:patterns -- --pull-only` 导入/更新本地档案，`--push-only` 把网页草稿安全写回，`--dry` 只统计。
 - 同步按 `source_key` 和内容哈希幂等，用户原话与归纳规律分字段保存；不得把网页记录直接转成策略或下单规则。
 - 新表迁移：`supabase/v10_trade_patterns.sql`。
@@ -97,6 +97,8 @@ Windows 计划任务 life-os-daily-sync（每天 22:07）
 - 写 `daily_focus.content` 时只覆盖 `—— <项目名> · 自动同步 ——` 标记之后的内容，用户手写部分保留；`win` 仅在为空时填。
 - 计划任务安装/卸载：`scripts/install-daily-sync.ps1`（`-At` 改时间、`-WithBotAutostart` 顺带注册大仙开机自启、`-Uninstall` 移除）。
   **该 .ps1 必须存成 UTF-8 with BOM**——PowerShell 5.1 会把无 BOM 的 UTF-8 当 ANSI 读，中文乱码且参数解析出错。
+- **Mac 上**用 `bash scripts/install-launchd.sh`（launchd，~/Library/LaunchAgents）一次装齐：大仙常驻 + 早晚简报 + 每晚同步；`--sync-at`/`--morning`/`--evening` 改时间，`--no-bot`、`--status`、`--uninstall`；日志在 `~/Library/Logs/life-os/`。同一时间只能有一台电脑跑大仙。
+- 本机大脑路径：Mac 默认 `python3` + `~/Projects/lh-pm-workbench/scripts/local_brain.py`，可用 `.env` 的 `PYTHON_CMD` / `LOCAL_BRAIN_SCRIPT` 覆盖。
 
 **快记链路**：输入 → 原话立即写 `journal_entries.raw_input`（保底不丢）→ 建 ai_jobs → 提炼回来弹确认卡片 → 用户勾选后：整理后正文进 `content`、知识资产进 `knowledge_notes`、待办进 `work_todos`。本机不在线就降级为原样存。
 
@@ -114,7 +116,7 @@ Windows 计划任务 life-os-daily-sync（每天 22:07）
 
 - 打卡必须走确定性快路：过大模型要几十秒，那点延迟足以劝退打卡。自然语言打卡才交给本机大脑（SYSTEM 准则 12）。
 - 动作编号 = `weekly_actions` 中 active 行按 `sort_order` 的序号，简报与打卡两边一致，不随消息变化。
-- 计划任务：`scripts/install-daily-brief.ps1`（`-Morning`/`-Evening` 改时间、`-Uninstall` 移除）。同样必须存成 **UTF-8 with BOM**。
+- 计划任务：`scripts/install-daily-brief.ps1`（`-Morning`/`-Evening` 改时间、`-Uninstall` 移除）。同样必须存成 **UTF-8 with BOM**。Mac 上由 `scripts/install-launchd.sh` 一并安装。
 - 手动试推：`npm run brief -- --morning --dry`。
 
 ## 移动端

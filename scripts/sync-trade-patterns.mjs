@@ -11,9 +11,16 @@ import {
   readResponseBodyLimited, toDatabasePattern, validateImageDownloadUrl,
 } from './trade-patterns-core.mjs'
 import { syncPullRecord, syncPushRecord } from './trade-patterns-sync.mjs'
+import { loadProjects } from './project-sync-config.mjs'
 
 const appRoot = join(dirname(fileURLToPath(import.meta.url)), '..')
-const archiveRoot = 'C:\\Users\\ADMIN\\trade\\research\\ideas'
+// 交易研究档案 = trade 项目下的 research/ideas。项目路径与每晚同步共用一份配置：
+// Windows 未配置时默认 C:\Users\ADMIN\trade；Mac/Linux 读 sync-projects.local.json 或 TRADE_PROJECT_PATH
+function tradeArchiveRoot(fileEnv) {
+  const trade = loadProjects(appRoot, { ...fileEnv, ...process.env }).find(project => project.key === 'trade')
+  if (!trade) throw new Error('项目配置里没有 key 为 trade 的项目，无法定位交易研究档案')
+  return join(trade.path, 'research', 'ideas')
+}
 
 async function loadEnv() {
   const candidates = [join(appRoot, '.env'), join(appRoot, '..', '..', '.env')]
@@ -115,6 +122,7 @@ async function main() {
   const url = env.VITE_SUPABASE_URL
   const key = env.VITE_SUPABASE_ANON_KEY
   if (!url || !key) throw new Error('Supabase URL 或 anon key 缺失')
+  const archiveRoot = tradeArchiveRoot(env)
   const archiveRootReal = await realpath(archiveRoot)
   if (archiveRootReal.toLowerCase() !== resolve(archiveRoot).toLowerCase()) {
     throw new Error('交易研究档案根目录不能是 junction 或符号链接')

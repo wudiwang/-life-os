@@ -17,7 +17,8 @@ if (existsSync(LOCK)) {
   try { process.kill(pid, 0); alive = true } catch { alive = false }
   if (alive) {
     console.error(`⛔ 已经有一个大仙在跑了（pid ${pid}），本次不启动。`)
-    console.error('   要重启：先结束那个进程，或运行 taskkill /PID ' + pid + ' /T /F')
+    const killHint = process.platform === 'win32' ? `taskkill /PID ${pid} /T /F` : `kill ${pid}`
+    console.error(`   要重启：先结束那个进程，或运行 ${killHint}`)
     process.exit(1)
   }
   console.log(`♻️ 发现过期锁（pid ${pid} 已不在），接管。`)

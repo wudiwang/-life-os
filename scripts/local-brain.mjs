@@ -1,18 +1,46 @@
-import { existsSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { spawn, spawnSync } from 'node:child_process'
-import { join } from 'node:path'
+import { homedir } from 'node:os'
+import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
-const DEFAULT_SCRIPT = 'C:\\Users\\ADMIN\\Projects\\lh-pm-workbench\\scripts\\local_brain.py'
+const WINDOWS_SCRIPT = 'C:\\Users\\ADMIN\\Projects\\lh-pm-workbench\\scripts\\local_brain.py'
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
+const DOTENV_KEYS = ['PYTHON_CMD', 'LOCAL_BRAIN_SCRIPT']
 
 // 人生 OS 的 AI 统一钉死 Opus 5.5：别名 'opus' 会在新版发布时自动跳走。
 export const BRAIN_MODEL = 'claude-opus-5-5'
 
-export function buildLocalBrainInvocation(env = process.env) {
-  const installedPython = join(env.LOCALAPPDATA || 'C:\\Users\\ADMIN\\AppData\\Local', 'Programs', 'Python', 'Python312', 'python.exe')
-  const command = env.PYTHON_CMD || (existsSync(installedPython) ? installedPython : 'python')
+// Windows 沿用原路径；Mac/Linux 默认 ~/Projects/lh-pm-workbench（迁移清单约定的克隆位置）
+export function defaultLocalBrainScript(platform = process.platform, home = homedir()) {
+  return platform === 'win32' ? WINDOWS_SCRIPT : join(home, 'Projects', 'lh-pm-workbench', 'scripts', 'local_brain.py')
+}
+
+// PYTHON_CMD / LOCAL_BRAIN_SCRIPT 可写在 .env；进程环境变量优先
+export function localBrainEnv(root = ROOT, processEnv = process.env) {
+  const fromFile = {}
+  try {
+    for (const line of readFileSync(join(root, '.env'), 'utf8').split(/\r?\n/)) {
+      const m = line.match(/^([A-Z_]+)=(.*)$/)
+      if (m && DOTENV_KEYS.includes(m[1]) && m[2].trim()) fromFile[m[1]] = m[2].trim()
+    }
+  } catch { /* 没有 .env 就只用进程环境变量 */ }
+  return { ...fromFile, ...processEnv }
+}
+
+export function buildLocalBrainInvocation(env = localBrainEnv(), platform = process.platform) {
+  let command = env.PYTHON_CMD
+  if (!command) {
+    if (platform === 'win32') {
+      const installedPython = join(env.LOCALAPPDATA || 'C:\\Users\\ADMIN\\AppData\\Local', 'Programs', 'Python', 'Python312', 'python.exe')
+      command = existsSync(installedPython) ? installedPython : 'python'
+    } else {
+      command = 'python3'
+    }
+  }
   return {
     command,
-    args: [env.LOCAL_BRAIN_SCRIPT || DEFAULT_SCRIPT],
+    args: [env.LOCAL_BRAIN_SCRIPT || defaultLocalBrainScript(platform, env.HOME || homedir())],
   }
 }
 
@@ -35,7 +63,7 @@ export function parseLocalBrainResponse(stdout) {
 }
 
 export function runLocalBrainSync(request, options = {}) {
-  const env = options.env || process.env
+  const env = options.env || localBrainEnv()
   const { command, args } = buildLocalBrainInvocation(env)
   const spawnSyncImpl = options.spawnSyncImpl || spawnSync
   const timeoutMs = options.timeoutMs || ((Number(request.timeout) || 300) + 10) * 1000
@@ -54,7 +82,7 @@ export function runLocalBrainSync(request, options = {}) {
 }
 
 export function runLocalBrain(request, options = {}) {
-  const env = options.env || process.env
+  const env = options.env || localBrainEnv()
   const { command, args } = buildLocalBrainInvocation(env)
   const spawnImpl = options.spawnImpl || spawn
   const timeoutMs = options.timeoutMs || ((Number(request.timeout) || 300) + 10) * 1000

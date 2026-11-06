@@ -87,7 +87,8 @@ test('allocateSourceKey uses maximum numeric prefix plus one', () => {
 
 test('resolveInside rejects traversal outside archive root', () => {
   const root = join('C:', 'trade', 'research', 'ideas')
-  assert.throws(() => resolveInside(root, '..\\outside'), /越界/)
+  // 用平台分隔符：Mac/Linux 上 '..\\outside' 是合法文件名而非越界
+  assert.throws(() => resolveInside(root, join('..', 'outside')), /越界/)
   assert.match(resolveInside(root, '008-idea'), /008-idea$/)
 })
 
