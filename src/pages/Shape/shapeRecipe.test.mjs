@@ -46,6 +46,7 @@ test('eggs are counted from grams and labels read naturally', () => {
   assert.equal(amountLabel('cp', 240), '3 袋（240g）')
   assert.equal(amountLabel('avocado', 70), '半个（70g 果肉）')
   assert.equal(amountLabel('broccoli', 150), '150g')
+  assert.equal(amountLabel('mackerel', 165), '1 片（165g）')
 })
 
 test('weekly shopping list sums grams and rounds countable items up', () => {

@@ -26,7 +26,8 @@ export const RECIPE_FOODS = {
   chickenBreast: base('chickenBreast', { name: '生鸡胸肉', kind: 'protein', sfa: 0.6 }),
   shrimp: base('shrimp', { kind: 'protein', sfa: 0.1 }),
   seabass: base('seabass', { kind: 'protein', sfa: 0.8 }),
-  mackerel: { name: '青花鱼', kind: 'protein', kcal: 205, p: 18.6, f: 13.9, c: 0, sfa: 3.26, note: '冷冻ซาบะ很多是腌过的，咸的就别再放盐' },
+  // 标品：挪威青花鱼片（CP Axtra 进口，800g/包，每片 140–190g，配料只有鱼、未加盐）。包装无营养表，按 USDA 大西洋青花鱼生重。
+  mackerel: { name: '挪威青花鱼片', kind: 'protein', kcal: 205, p: 18.6, f: 13.9, c: 0, sfa: 3.26, unit: { label: '片', g: 165 }, note: '1 片约 165g：338kcal / 蛋白 31g / 脂肪 23g（饱和 5.4g、EPA+DHA 3.8g）' },
   salmon: base('salmon', { kind: 'protein', sfa: 3.05 }),
   beefLean: base('beefLean', { name: '瘦牛肉', kind: 'protein', sfa: 1.8 }),
   tofu: base('tofu', { kind: 'protein', sfa: 0.7 }),
@@ -116,7 +117,7 @@ export const PROTEIN_SWAPS = [
   { key: 'beefLean', g: 85, tag: '精瘦', tip: '选瘦的部位，不要肥牛卷' },
   { key: 'tofu', g: 150, tag: '中等', tip: '净碳约 2g' },
   { key: 'egg', g: 150, tag: '高脂', tip: '全蛋每天 ≤ 3 个' },
-  { key: 'mackerel', g: 100, tag: '高脂', tip: 'omega-3 多' },
+  { key: 'mackerel', g: 100, tag: '高脂', tip: '1 片 165g ≈ 1.7 份；自带 23g 脂肪，当天少放油' },
   { key: 'salmon', g: 90, tag: '高脂', tip: 'omega-3 多' },
   { key: 'greekYogurt', g: 200, tag: '高脂', tip: '净碳 8g，当加餐偶尔吃' },
 ]
@@ -132,9 +133,9 @@ export const BASELINE_DAY = {
   day: '周一', theme: '基线日',
   meals: [
     B('choySum'),
-    { slot: 'lunch', time: '12:30', name: 'CP 鸡胸 3 袋 + 空气炸锅西兰花蘑菇', how: '西兰花切小朵、蘑菇对半切，喷 5g 橄榄油、撒盐，190°C 空气炸 10–12 分钟；出锅再淋 10g 橄榄油。CP 鸡胸可一起放进去热 3 分钟。', items: [['cp', 240], ['broccoli', 150], ['mushroom', 100], ['oliveOil', 15]] },
-    { slot: 'snack', time: '16:00', name: '巴旦木一小把', how: '30g 约 23 颗，提前分装好，别抱着袋子吃。', items: [['almond', 30]] },
-    { slot: 'dinner', time: '18:30', name: '空气炸锅青花鱼 + 白灼菜心 + 牛油果生菜沙拉', how: '青花鱼解冻后皮朝上，200°C 空气炸 10–12 分钟，不用放油（腌过的就不放盐）。菜心水开焯 1 分钟，淋少许酱油、蒜末。生菜撕开拌另外半个牛油果和 5g 橄榄油。', items: [['mackerel', 200], ['choySum', 200], ['lettuce', 100], ['avocado', 70], ['oliveOil', 5]] },
+    { slot: 'lunch', time: '12:30', name: 'CP 鸡胸 3 袋 + 空气炸锅西兰花', how: '西兰花切小朵，喷 5g 橄榄油、撒盐，190°C 空气炸 10–12 分钟；出锅再淋 10g 橄榄油。CP 鸡胸可一起放进去热 3 分钟。', items: [['cp', 240], ['broccoli', 150], ['oliveOil', 15]] },
+    { slot: 'snack', time: '16:00', name: '南瓜子', how: '25g 约 2 大勺，镁很多。提前分装好，别抱着袋子吃。', items: [['pumpkinSeed', 25]] },
+    { slot: 'dinner', time: '18:30', name: '空气炸锅青花鱼 + 白灼菜心蘑菇 + 牛油果生菜沙拉', how: '青花鱼 1 片解冻擦干，撒少许盐和黑胡椒，皮朝上 200°C 空气炸 10–12 分钟，不用放油（冷冻直接烤 14–16 分钟；中线有细刺）。菜心、蘑菇水开焯 1–2 分钟，淋少许酱油、蒜末。生菜撕开拌另外半个牛油果和 5g 橄榄油。', items: [['mackerel', 165], ['choySum', 200], ['mushroom', 100], ['lettuce', 100], ['avocado', 70], ['oliveOil', 5]] },
   ],
 }
 
@@ -180,9 +181,9 @@ export const WEEK = [
     day: '周六', theme: '青花鱼日',
     meals: [
       B('asparagus'),
-      { slot: 'lunch', time: '12:30', name: '空气炸锅鸡胸 + 包菜番茄', how: '鸡胸做法同周三。包菜、番茄切块，10g 橄榄油炒 3 分钟。', items: [['chickenBreast', 250], ['cabbage', 150], ['tomato', 80], ['oliveOil', 15]] },
+      { slot: 'lunch', time: '12:30', name: '空气炸锅鸡胸 + 包菜番茄', how: '鸡胸做法同周三。包菜、番茄切块，10g 橄榄油炒 3 分钟。', items: [['chickenBreast', 280], ['cabbage', 150], ['tomato', 80], ['oliveOil', 15]] },
       { slot: 'snack', time: '16:00', name: '巴旦木', how: '30g 约 23 颗。', items: [['almond', 30]] },
-      { slot: 'dinner', time: '18:30', name: '空气炸锅青花鱼 + 菜心 + 黄瓜', how: '青花鱼做法同周一。菜心焯 1 分钟，黄瓜拍碎拌蒜末、青柠汁和 5g 橄榄油。', items: [['mackerel', 200], ['choySum', 200], ['cucumber', 100], ['oliveOil', 5]] },
+      { slot: 'dinner', time: '18:30', name: '空气炸锅青花鱼 + 菜心蘑菇 + 拍黄瓜', how: '青花鱼 1 片，做法同周一。菜心、蘑菇焯 1–2 分钟，黄瓜拍碎拌蒜末、青柠汁和 5g 橄榄油。', items: [['mackerel', 165], ['choySum', 200], ['mushroom', 100], ['cucumber', 100], ['oliveOil', 5]] },
     ],
   },
   {
@@ -213,7 +214,7 @@ export const QA = [
   },
   {
     group: '脂肪', items: [
-      { q: '一天的脂肪从哪来？', a: ['以基线日为例，约 111g：肉蛋鱼自带约 50g，牛油果 1 个约 21g，坚果 30g 约 15g，加的油 25g（早 5g、午 15g、晚 5g）。', '不够饱就先加蔬菜和蛋白，再加 10g 坚果，最后才是油。'] },
+      { q: '一天的脂肪从哪来？', a: ['以基线日为例，约 104g：肉蛋鱼自带约 43g（其中青花鱼 1 片就有 23g），牛油果 1 个约 21g，南瓜子 25g 约 12g，加的油 25g（早 5g、午 15g、晚 5g）。', '不够饱就先加蔬菜和蛋白，再加 10g 坚果，最后才是油。'] },
       { q: '用什么油？怎么用？', a: ['炒菜、拌菜：特级初榨橄榄油；不喜欢它的味道就用 light 橄榄油或牛油果油。大火爆炒：牛油果油或米糠油（น้ำมันรำข้าว）。', '不用：棕榈油（น้ำมันปาล์ม，超市最便宜的瓶装油大多是它）、椰子油、黄油、猪油。', '空气炸锅前喷一层（2–3g），剩下的出锅再淋；用汤匙量，1 汤匙 ≈ 13.5g ≈ 120 kcal。', '咖啡喝黑的，不做防弹咖啡。'] },
       { q: '饱和脂肪为什么要控在 20g？', a: ['生酮在血脂上最大的风险，是饱和脂肪把 LDL / ApoB 推高；你的血脂本来就偏高（ApoB 待查），更要控。', '大头来源：防弹咖啡一杯约 19g、头道椰浆 100g 约 30g、五花肉 100g 约 19g、黄油 10g 约 5g。'] },
     ],
