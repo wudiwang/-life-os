@@ -18,12 +18,19 @@ export function weekOf(day) {
   return Array.from({ length: 7 }, (_, i) => addDays(monday, i))
 }
 
+// satFat：没有任何一条填了饱和脂肪时为 null（老记录或没估），避免把「没记」显示成 0g 达标
 export function sumFood(rows) {
   const t = rows.reduce((a, r) => ({
     kcal: a.kcal + num(r.kcal), protein: a.protein + num(r.protein_g),
-    fat: a.fat + num(r.fat_g), netCarb: a.netCarb + num(r.net_carb_g),
-  }), { kcal: 0, protein: 0, fat: 0, netCarb: 0 })
-  return { kcal: round(t.kcal), protein: round(t.protein), fat: round(t.fat), netCarb: round(t.netCarb, 1) }
+    fat: a.fat + num(r.fat_g), satFat: a.satFat + num(r.sat_fat_g), netCarb: a.netCarb + num(r.net_carb_g),
+  }), { kcal: 0, protein: 0, fat: 0, satFat: 0, netCarb: 0 })
+  const hasSat = rows.some(r => r.sat_fat_g != null && r.sat_fat_g !== '')
+  return { kcal: round(t.kcal), protein: round(t.protein), fat: round(t.fat), satFat: hasSat ? round(t.satFat) : null, netCarb: round(t.netCarb, 1) }
+}
+
+// 有氧分钟：专门的有氧和出去走的那种（kind=cardio/walk），日常步数不算
+export function aerobicMinutes(workouts) {
+  return round(workouts.filter(w => w.kind === 'cardio' || w.kind === 'walk').reduce((a, w) => a + num(w.duration_min), 0))
 }
 
 // Mifflin-St Jeor 基础代谢
@@ -60,6 +67,8 @@ export function dayChecks({ food, workouts, daily, targets = SHAPE_PLAN.daily })
     kcal: logged ? t.kcal <= targets.kcal + 100 : null,
     protein: logged ? t.protein >= targets.protein : null,
     netCarb: logged ? t.netCarb <= targets.netCarb : null,
+    fat: logged ? t.fat <= targets.fat : null,
+    satFat: t.satFat != null ? t.satFat <= targets.satFat : null,
     steps: daily?.steps != null ? num(daily.steps) >= targets.steps : null,
     trained: workouts.some(w => w.kind === 'strength'),
   }
@@ -86,6 +95,7 @@ export function weekSummary({ day, foodRows, workoutRows, dailyRows }) {
   return {
     days,
     strength: days.filter(d => d.checks.trained).length,
+    aerobicMin: aerobicMinutes(workoutRows.filter(w => days.some(d => d.day === w.log_date))),
     proteinDays: days.filter(d => d.checks.protein).length,
     loggedDays: days.filter(d => d.logged).length,
     avgWeight: weights.length ? round(weights.reduce((a, b) => a + b, 0) / weights.length, 1) : null,

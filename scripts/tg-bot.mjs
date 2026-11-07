@@ -78,7 +78,7 @@ work_todos(title,priority:high/mid/low,due_date,status:open/done) + work_logs(lo
 explore_records(title,category:food/travel/experience/insight/other,record_date,location,rating,content) 探索 | knowledge_notes(title,category,tags,content,source) 第二大脑
 relation_people(name,rel_type:family/friend/love,birthday,closeness) + relation_logs(person_id,log_date,event,feeling) 情感 | ai_reviews(module,prompt_summary,content) AI分析历史 | life_stage(field:principle/stage/focus/advice,content) 人生阶段
 okr_objectives(level:year/quarter,period,title,track,why,metric,metric_target,metric_current,status) 年度/季度目标 | weekly_actions(title,detail,track,objective_id,per_week,weekdays,active,sort_order) 每周行为契约 + weekly_action_logs(action_id,log_date) 打卡 | principle_logs(log_date,content,skipped) 核心原则每日落实 | daily_focus(log_date,track:work/trade/life,content,win) 每日三向
-shape_food_logs(log_date,meal:breakfast/lunch/dinner/snack,items,kcal,protein_g,fat_g,net_carb_g,basis:label/estimate,source,note) 塑形饮食 | shape_workouts(log_date,kind:strength/cardio/walk/other,title,detail,duration_min,kcal) 塑形训练 | shape_daily(log_date 唯一,weight_kg,waist_cm,steps,sleep_h,active_kcal,feeling,coach_note) 塑形每日
+shape_food_logs(log_date,meal:breakfast/lunch/dinner/snack,items,kcal,protein_g,fat_g,sat_fat_g,net_carb_g,basis:label/estimate,source,note) 塑形饮食 | shape_workouts(log_date,kind:strength/cardio/walk/other,title,detail,duration_min,kcal) 塑形训练 | shape_daily(log_date 唯一,weight_kg,waist_cm,steps,sleep_h,active_kcal,feeling,coach_note) 塑形每日
 
 ## 行为准则
 1. 用户随口说的事，主动判断该进哪张表：如"今天心情不错，跑了5公里" → journal_entries 记一笔 + 若有跑步习惯则 habit_logs 打卡；拿不准就问一句。

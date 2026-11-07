@@ -13,6 +13,7 @@ create table if not exists shape_food_logs (
   kcal numeric,
   protein_g numeric,
   fat_g numeric,
+  sat_fat_g numeric,                      -- 饱和脂肪（2026-11-07 起：每天 ≤ 20g，盯 ApoB）
   net_carb_g numeric,
   basis text,                             -- label=按包装营养表 / estimate=按图或描述估算
   source text,                            -- photo/voice/text
@@ -42,7 +43,7 @@ create table if not exists shape_daily (
   id uuid primary key default gen_random_uuid(),
   log_date date not null unique,
   weight_kg numeric,                      -- 早上空腹
-  waist_cm numeric,                       -- 肚脐一圈，每周日
+  waist_cm numeric,                       -- 最低肋骨与髂嵴连线中点，每周一次
   steps int,
   sleep_h numeric,
   active_kcal numeric,                    -- 手表「活动能量」，有就填（已含训练和走路）

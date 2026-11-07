@@ -50,7 +50,7 @@ export function ShapePage() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 10, flexWrap: 'wrap' }}>
         <div>
           <div style={{ fontSize: mobile ? 20 : 22, fontWeight: 700 }}>💪 {SHAPE_PLAN.title}</div>
-          <div style={subtle}>{n >= 1 ? `第 ${n} 天 · 第 ${Math.ceil(n / 7)} / ${SHAPE_PLAN.weeks} 周` : `${SHAPE_PLAN.start} 开始`} · 生酮 {t.kcal} kcal · 蛋白 {t.protein}g · 每周力量 {SHAPE_PLAN.weekly.strength} 次</div>
+          <div style={subtle}>{n >= 1 ? `第 ${n} 天 · 第 ${Math.ceil(n / 7)} / ${SHAPE_PLAN.weeks} 周` : `${SHAPE_PLAN.start} 开始`} · 生酮 {t.kcal} kcal · 蛋白 {t.protein}g · 每周力量 {SHAPE_PLAN.weekly.strength} 次 + 有氧 {SHAPE_PLAN.weekly.aerobicMin} 分钟</div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <DayBtn onClick={() => setDay(addDays(day, -1))}>‹</DayBtn>
@@ -84,6 +84,13 @@ export function ShapePage() {
             <Fact label="睡眠" value={daily?.sleep_h != null ? `${daily.sleep_h} h` : '—'} />
           </div>
         </div>
+        {food.length > 0 && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 16px', marginTop: 10, paddingTop: 8, borderTop: `1px solid ${COLORS.border}`, fontSize: 13 }}>
+            <span>脂肪 <Mark ok={checks.fat} text={`${fmt(totals.fat)} / ≤ ${t.fat}g`} /></span>
+            <span>饱和脂肪 <Mark ok={checks.satFat} text={totals.satFat != null ? `${fmt(totals.satFat)} / ≤ ${t.satFat}g` : `未估 / ≤ ${t.satFat}g`} /></span>
+            <span style={subtle}>脂肪是剩余热量的上限，不是要吃够的量；饱和脂肪管 ApoB</span>
+          </div>
+        )}
         {daily?.feeling && <div style={{ ...subtle, marginTop: 8 }}>感受：{daily.feeling}</div>}
       </Card>
 
@@ -98,16 +105,16 @@ export function ShapePage() {
           {food.length === 0 && <div style={subtle}>暂无记录</div>}
           {food.map(r => (
             <div key={r.id} style={{ padding: '8px 0', borderTop: `1px solid ${COLORS.border}` }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '2px 8px' }}>
                 <span style={{ fontSize: 13, fontWeight: 600 }}>{MEALS.find(m => m.key === r.meal)?.label || r.meal}</span>
-                <span style={{ fontSize: 12, color: COLORS.text, whiteSpace: 'nowrap' }}>{fmt(r.kcal)} kcal · 蛋白 {fmt(r.protein_g)}g · 碳 {fmt(r.net_carb_g)}g</span>
+                <span style={{ fontSize: 12, color: COLORS.text }}>{fmt(r.kcal)} kcal · 蛋白 {fmt(r.protein_g)}g · 碳 {fmt(r.net_carb_g)}g · 脂 {fmt(r.fat_g)}g{r.sat_fat_g != null ? `（饱和 ${fmt(r.sat_fat_g)}g）` : ''}</span>
               </div>
               <div style={{ ...subtle, color: COLORS.text }}>{r.items}</div>
               {(r.basis === 'label' || r.note) && <div style={subtle}>{r.basis === 'label' ? '按包装营养表' : ''}{r.basis === 'label' && r.note ? ' · ' : ''}{r.note}</div>}
             </div>
           ))}
         </Card>
-        <Card title="🏋️ 训练" extra={<span style={subtle}>本周力量 {week.strength} / {SHAPE_PLAN.weekly.strength}</span>}>
+        <Card title="🏋️ 训练" extra={<span style={subtle}>本周力量 {week.strength} / {SHAPE_PLAN.weekly.strength} · 有氧 {week.aerobicMin} / {SHAPE_PLAN.weekly.aerobicMin} 分钟</span>}>
           {workouts.length === 0 && <div style={subtle}>{day === today ? '今天还没练' : '这天没有训练记录'}</div>}
           {workouts.map(w => (
             <div key={w.id} style={{ padding: '8px 0', borderTop: `1px solid ${COLORS.border}` }}>
@@ -123,10 +130,10 @@ export function ShapePage() {
 
       <Card title="📅 本周" extra={<span style={subtle}>记录 {week.loggedDays}/7 天 · 蛋白达标 {week.proteinDays} 天 · 平均体重 {week.avgWeight ?? '—'} kg</span>}>
         <ScrollX>
-          <table style={{ width: '100%', minWidth: 520, borderCollapse: 'collapse', fontSize: 13 }}>
+          <table style={{ width: '100%', minWidth: 580, borderCollapse: 'collapse', fontSize: 13 }}>
             <thead>
               <tr style={{ color: COLORS.textLight }}>
-                {['', '热量', '蛋白', '净碳', '步数', '力量', '体重'].map(h => <th key={h} style={{ ...cell, fontWeight: 500, textAlign: h ? 'center' : 'left' }}>{h}</th>)}
+                {['', '热量', '蛋白', '净碳', '饱和脂肪', '步数', '力量', '体重'].map(h => <th key={h} style={{ ...cell, fontWeight: 500, textAlign: h ? 'center' : 'left' }}>{h}</th>)}
               </tr>
             </thead>
             <tbody>
@@ -136,6 +143,7 @@ export function ShapePage() {
                   <td style={cellC}><Mark ok={d.checks.kcal} text={d.logged && d.totals.kcal ? fmt(d.totals.kcal) : ''} /></td>
                   <td style={cellC}><Mark ok={d.checks.protein} text={d.checks.protein != null ? `${fmt(d.totals.protein)}g` : ''} /></td>
                   <td style={cellC}><Mark ok={d.checks.netCarb} text={d.checks.netCarb != null ? `${d.totals.netCarb}g` : ''} /></td>
+                  <td style={cellC}><Mark ok={d.checks.satFat} text={d.totals.satFat != null ? `${fmt(d.totals.satFat)}g` : ''} /></td>
                   <td style={cellC}><Mark ok={d.checks.steps} text={d.steps != null ? fmt(d.steps) : ''} /></td>
                   <td style={cellC}>{d.checks.trained ? <span style={{ color: COLORS.green }}>✓ <span style={{ color: COLORS.text }}>练了</span></span> : <span style={{ color: COLORS.textLight }}>·</span>}</td>
                   <td style={cellC}>{d.weight ?? '—'}</td>
@@ -147,7 +155,7 @@ export function ShapePage() {
         <div style={{ ...subtle, marginTop: 6 }}>点某一天可以看当天详情。✓ 达标 · ✗ 未达标 · 「·」未记录</div>
       </Card>
 
-      <Card title="⚖️ 体重趋势（7 日平均）" extra={<span style={subtle}>单日波动大，看平均线；目标每周降 0.5–0.9 kg</span>}>
+      <Card title="⚖️ 体重趋势（7 日平均）" extra={<span style={subtle}>看平均线；目标每周降 0.4–0.7 kg</span>}>
         <TrendChart data={trend} unit="kg" height={mobile ? 170 : 110} />
       </Card>
 
@@ -155,10 +163,10 @@ export function ShapePage() {
         <summary style={{ cursor: 'pointer', fontSize: 14, fontWeight: 600 }}>📋 怎么记录 · 计划要点</summary>
         <div style={{ fontSize: 13, lineHeight: 1.9, marginTop: 8 }}>
           <div><b>每天晚上在 TG 发给大仙</b>：早上空腹体重；每餐照片（包装食品第一次拍营养成分表）；训练内容（动作 × 重量 × 组 × 次，或「休息」）；步数或手表截图；一句感受。照片和口述都行，大仙会算好热量、蛋白、运动消耗并写进这一页。</div>
-          <div><b>每周日</b>加腰围；<b>每月</b>加 InBody、正侧背照片、抽血报告。</div>
-          <div><b>训练</b>：每周 3 次全身力量（A/B 交替），每天 {t.steps.toLocaleString()} 步；喝酒或熬夜后的第二天只走路。</div>
-          <div><b>饮食</b>：每天约 {t.kcal} kcal、蛋白 {t.protein}g、净碳 ≤ {t.netCarb}g、水 3L，加电解质和镁。</div>
-          <div style={subtle}>完整计划见项目 docs/健康塑形计划.md。<button onClick={() => setPage('mealPlan')} style={{ border: 'none', background: 'none', color: COLORS.primaryDark, cursor: 'pointer', padding: 0, fontSize: 12 }}>看一周食谱 ›</button></div>
+          <div><b>每周日</b>加腰围（最低肋骨和胯骨连线中点，早上空腹、呼气末量两次）；<b>每月</b>加 InBody、正侧背照片、抽血报告；血压用上臂式血压计，早晚各量 2 次。</div>
+          <div><b>训练</b>：每周 3 次全身力量（A/B 交替）+ 有氧 {SHAPE_PLAN.weekly.aerobicMin} 分钟（心率约 118–140，坡度走/骑车/游泳），每天 {t.steps.toLocaleString()} 步，大餐后走 10–15 分钟；喝酒或熬夜后的第二天只走路。</div>
+          <div><b>饮食</b>：顺序是热量 {t.kcal} kcal → 蛋白 ≥ {t.protein}g → 净碳 ≤ {t.netCarb}g → 脂肪补足剩余（上限约 {t.fat}g，不是要吃够）。饱和脂肪 ≤ {t.satFat}g：不喝防弹咖啡，少用黄油、椰子油、椰浆、五花肉；油用橄榄油、牛油果、坚果，每周 2–3 次多脂鱼。水 3–3.5L，前 4 周不喝酒。</div>
+          <div style={subtle}>完整计划见项目 docs/健康塑形计划.md。<button onClick={() => setPage('recipe')} style={{ border: 'none', background: 'none', color: COLORS.primaryDark, cursor: 'pointer', padding: 0, fontSize: 12 }}>看食谱（基线、一周、蛋白替换、电解质与喝水）›</button></div>
         </div>
       </details>
     </div>

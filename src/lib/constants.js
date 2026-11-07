@@ -19,13 +19,14 @@ export const COLORS = {
 
 export const NAV_ITEMS = [
   { key: 'shape', label: '健康塑形', icon: '💪' },
+  { key: 'recipe', label: '食谱', icon: '🥗' },
   { key: 'dashboard', label: '人生看板', icon: '🏠' },
   { key: 'overview', label: '生活概览', icon: '🌱' },
   { key: 'okr', label: '人生 OKR', icon: '🧗' },
   { key: 'journal', label: '每日一记', icon: '📔' },
   { key: 'tradePatterns', label: '交易形态库', icon: '📐' },
   { key: 'health', label: '健康', icon: '❤️' },
-  { key: 'mealPlan', label: '一周食谱', icon: '🥑' },
+  { key: 'mealPlan', label: '一周食谱（旧版）', icon: '🥑' },
   { key: 'habits', label: '习惯', icon: '🔁' },
   { key: 'goals', label: '目标', icon: '🎯' },
   { key: 'work', label: '工作', icon: '💼' },
@@ -46,7 +47,7 @@ export const TRADE_PATTERN_STATUS = [
 ]
 
 // 侧栏常驻显示的模块（像搭积木：先只留当前主线，其余折叠在「更多模块」里，功能都还在）
-export const PRIMARY_NAV = ['shape']
+export const PRIMARY_NAV = ['shape', 'recipe']
 
 export const PAGE_TITLES = Object.fromEntries(NAV_ITEMS.map(i => [i.key, `${i.icon} ${i.label}`]))
 

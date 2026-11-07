@@ -16,9 +16,11 @@ import { TradePatternsPage } from './TradePatterns/TradePatternsPage'
 import { ThaiPage } from './Thai/ThaiPage'
 import { MealPlanPage } from './MealPlan/MealPlanPage'
 import { ShapePage } from './Shape/ShapePage'
+import { RecipePage } from './Shape/RecipePage'
 
 export const PAGES = {
   shape: ShapePage,
+  recipe: RecipePage,
   dashboard: DailyBoard,
   overview: DashboardPage,
   okr: OKRPage,

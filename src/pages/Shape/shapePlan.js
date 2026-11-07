@@ -1,4 +1,5 @@
 // 健康塑形第 1 期的目标（与 docs/健康塑形计划.md 保持一致，改数字两边一起改）。
+// 2026-11-07 修订：脂肪改为上限（不是要吃够的门槛）、加饱和脂肪额度和每周有氧分钟。
 export const SHAPE_PLAN = {
   title: '健康塑形 · 第 1 期',
   start: '2026-11-04',
@@ -8,9 +9,11 @@ export const SHAPE_PLAN = {
     kcal: 1900,          // 摄入上限参考；±100 内都算达标
     protein: 150,        // 下限
     netCarb: 30,         // 上限（生酮）
+    fat: 120,            // 上限 = 热量 − 蛋白 − 碳水 剩下的部分；不是「要吃够」的门槛
+    satFat: 20,          // 上限（≈ 总热量 10%）；ApoB 偏高时收紧到 13–15
     steps: 8000,         // 下限
   },
-  weekly: { strength: 3 },
+  weekly: { strength: 3, aerobicMin: 150 }, // 有氧 = 心率约 118–140 的坡度走/骑车/游泳，不含日常步数
 }
 
 export const MEALS = [
