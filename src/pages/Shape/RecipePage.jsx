@@ -6,11 +6,11 @@ import { Card } from '../../components/common/StatCard'
 import { useIsMobile } from '../../hooks/useIsMobile'
 import { bangkokDay } from '../../lib/dailyActions'
 import { RECIPE_FOODS, RECIPE_TARGETS, WEEK, BASELINE_DAY, PROTEIN_SWAPS, PROTEIN_UNIT, QA, sumItems, dayTotals, dayChecks, eggCount, amountLabel, shoppingList } from './shapeRecipe'
-import { RECIPE_CREDITS } from './recipeCredits'
+import { RECIPE_CREDITS, HAS_IMG } from './recipeCredits'
+import { FoodImg } from './FoodImg'
 
 const subtle = { fontSize: 12, color: COLORS.textLight, lineHeight: 1.6 }
 const fmt = n => Number(n).toLocaleString('zh-CN')
-const HAS_IMG = new Set(RECIPE_CREDITS.map(c => c.key))
 const TABS = [
   { key: 'base', label: '一日基线' },
   { key: 'week', label: '一周食谱' },
@@ -204,14 +204,6 @@ function MealBlock({ meal, mobile }) {
       <div style={{ fontSize: 13, lineHeight: 1.7, background: COLORS.bg, borderRadius: 8, padding: '8px 10px' }}><b>做法</b>：{meal.how}</div>
     </div>
   )
-}
-
-function FoodImg({ k, size }) {
-  const box = { width: size, height: size, borderRadius: 8, flexShrink: 0 }
-  if (!HAS_IMG.has(k)) {
-    return <div style={{ ...box, background: COLORS.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: size / 2.6, color: COLORS.textLight }}>{RECIPE_FOODS[k].name.slice(0, 1)}</div>
-  }
-  return <img src={`/recipe/${k}.jpg`} alt={RECIPE_FOODS[k].name} width={size} height={size} loading="lazy" style={{ ...box, objectFit: 'cover', background: COLORS.bg }} />
 }
 
 // ── 蛋白替换 ──

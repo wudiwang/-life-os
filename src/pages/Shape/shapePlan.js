@@ -7,6 +7,7 @@ export const SHAPE_PLAN = {
   profile: { heightCm: 180, age: 35, sex: 'male', weightKg: 90 },
   daily: {
     kcal: 1900,          // 摄入上限参考；±100 内都算达标
+    kcalFloor: 1500,     // 底线：低于它就是吃太少（练过的日子更要补）
     protein: 150,        // 下限
     netCarb: 30,         // 上限（生酮）
     fat: 120,            // 上限 = 热量 − 蛋白 − 碳水 剩下的部分；不是「要吃够」的门槛

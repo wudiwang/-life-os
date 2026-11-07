@@ -10,7 +10,9 @@ import { useIsMobile } from '../../hooks/useIsMobile'
 import { bangkokDay } from '../../lib/dailyActions'
 import { useUIStore } from '../../store/useUIStore'
 import { SHAPE_PLAN, MEALS, WORKOUT_KINDS } from './shapePlan'
-import { addDays, sumFood, weightOn, energyBalance, dayChecks, weekSummary, weightTrend, planDay } from './shapeCalc'
+import { addDays, sumFood, weightOn, energyBalance, weekSummary, weightTrend, planDay } from './shapeCalc'
+import { remainingRows, suggest, cpBagsEaten } from './shapeSuggest'
+import { FoodImg } from './FoodImg'
 
 const subtle = { fontSize: 12, color: COLORS.textLight, lineHeight: 1.6 }
 const fmt = n => (n == null ? '—' : Number(n).toLocaleString('zh-CN'))
@@ -39,7 +41,6 @@ export function ShapePage() {
   const totals = sumFood(food)
   const weightKg = weightOn(dailyT.rows, day)
   const energy = energyBalance({ food, workouts, daily, weightKg })
-  const checks = dayChecks({ food, workouts, daily })
   const week = weekSummary({ day, foodRows: foodT.rows, workoutRows: workT.rows, dailyRows: dailyT.rows })
   const trend = weightTrend(dailyT.rows, day, 30).map(p => ({ x: p.x, y: p.avg, tip: `${p.x.slice(5)}  7日均 ${p.avg ?? '—'} kg${p.y != null ? ` · 实测 ${p.y}` : ''}` }))
   const t = SHAPE_PLAN.daily
@@ -61,12 +62,9 @@ export function ShapePage() {
 
       {missing && <TableMissing sql="v18_shape.sql" />}
 
-      <div style={{ display: 'grid', gridTemplateColumns: mobile ? '1fr 1fr' : 'repeat(4, 1fr)', gap: 10 }}>
-        <Meter label="摄入热量" value={totals.kcal} target={t.kcal} unit="kcal" mode="max" ok={checks.kcal} />
-        <Meter label="蛋白质" value={totals.protein} target={t.protein} unit="g" mode="min" ok={checks.protein} />
-        <Meter label="净碳水" value={totals.netCarb} target={t.netCarb} unit="g" mode="max" ok={checks.netCarb} />
-        <Meter label="步数" value={daily?.steps ?? null} target={t.steps} unit="步" mode="min" ok={checks.steps} />
-      </div>
+      <RemainingCard totals={totals} steps={daily?.steps ?? null} food={food} isToday={day === today} mobile={mobile} onRecipe={() => setPage('recipe')} />
+
+      <TodayLog food={food} workouts={workouts} isToday={day === today} week={week} />
 
       <Card>
         <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: '6px 18px' }}>
@@ -84,13 +82,6 @@ export function ShapePage() {
             <Fact label="睡眠" value={daily?.sleep_h != null ? `${daily.sleep_h} h` : '—'} />
           </div>
         </div>
-        {food.length > 0 && (
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 16px', marginTop: 10, paddingTop: 8, borderTop: `1px solid ${COLORS.border}`, fontSize: 13 }}>
-            <span>脂肪 <Mark ok={checks.fat} text={`${fmt(totals.fat)} / ≤ ${t.fat}g`} /></span>
-            <span>饱和脂肪 <Mark ok={checks.satFat} text={totals.satFat != null ? `${fmt(totals.satFat)} / ≤ ${t.satFat}g` : `未估 / ≤ ${t.satFat}g`} /></span>
-            <span style={subtle}>脂肪是剩余热量的上限，不是要吃够的量；饱和脂肪管 ApoB</span>
-          </div>
-        )}
         {daily?.feeling && <div style={{ ...subtle, marginTop: 8 }}>感受：{daily.feeling}</div>}
       </Card>
 
@@ -99,34 +90,6 @@ export function ShapePage() {
           ? <div style={{ fontSize: 14, lineHeight: 1.8, whiteSpace: 'pre-wrap' }}>{daily.coach_note}</div>
           : <div style={subtle}>{day === today ? '还没收到今天的日报。在 TG 发给大仙：食物照片、训练内容、体重、步数，点评会出现在这里。' : '这天没有点评。'}</div>}
       </Card>
-
-      <div style={{ display: 'grid', gridTemplateColumns: mobile ? '1fr' : '1fr 1fr', gap: 14 }}>
-        <Card title="🍽 饮食" extra={<span style={subtle}>{food.length} 条</span>}>
-          {food.length === 0 && <div style={subtle}>暂无记录</div>}
-          {food.map(r => (
-            <div key={r.id} style={{ padding: '8px 0', borderTop: `1px solid ${COLORS.border}` }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '2px 8px' }}>
-                <span style={{ fontSize: 13, fontWeight: 600 }}>{MEALS.find(m => m.key === r.meal)?.label || r.meal}</span>
-                <span style={{ fontSize: 12, color: COLORS.text }}>{fmt(r.kcal)} kcal · 蛋白 {fmt(r.protein_g)}g · 碳 {fmt(r.net_carb_g)}g · 脂 {fmt(r.fat_g)}g{r.sat_fat_g != null ? `（饱和 ${fmt(r.sat_fat_g)}g）` : ''}</span>
-              </div>
-              <div style={{ ...subtle, color: COLORS.text }}>{r.items}</div>
-              {(r.basis === 'label' || r.note) && <div style={subtle}>{r.basis === 'label' ? '按包装营养表' : ''}{r.basis === 'label' && r.note ? ' · ' : ''}{r.note}</div>}
-            </div>
-          ))}
-        </Card>
-        <Card title="🏋️ 训练" extra={<span style={subtle}>本周力量 {week.strength} / {SHAPE_PLAN.weekly.strength} · 有氧 {week.aerobicMin} / {SHAPE_PLAN.weekly.aerobicMin} 分钟</span>}>
-          {workouts.length === 0 && <div style={subtle}>{day === today ? '今天还没练' : '这天没有训练记录'}</div>}
-          {workouts.map(w => (
-            <div key={w.id} style={{ padding: '8px 0', borderTop: `1px solid ${COLORS.border}` }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
-                <span style={{ fontSize: 13, fontWeight: 600 }}>{WORKOUT_KINDS[w.kind] || w.kind} · {w.title}</span>
-                <span style={{ fontSize: 12, color: COLORS.text, whiteSpace: 'nowrap' }}>{w.duration_min ? `${fmt(w.duration_min)} 分钟 · ` : ''}{w.kcal ? `约 ${fmt(w.kcal)} kcal` : ''}</span>
-              </div>
-              {w.detail && <div style={{ ...subtle, color: COLORS.text, whiteSpace: 'pre-wrap' }}>{w.detail}</div>}
-            </div>
-          ))}
-        </Card>
-      </div>
 
       <Card title="📅 本周" extra={<span style={subtle}>记录 {week.loggedDays}/7 天 · 蛋白达标 {week.proteinDays} 天 · 平均体重 {week.avgWeight ?? '—'} kg</span>}>
         <ScrollX>
@@ -190,24 +153,101 @@ function Mark({ ok, text }) {
   return <span><span style={{ color: s.color }}>{s.icon}</span>{text && <span style={{ marginLeft: 4 }}>{text}</span>}</span>
 }
 
-// 单项进度：mode=min 表示要达到（蛋白、步数），mode=max 表示别超过（热量、碳水）
-function Meter({ label, value, target, unit, mode, ok }) {
-  const s = STATUS[String(ok)]
-  const pct = value == null ? 0 : Math.min(100, (Number(value) / target) * 100)
-  const over = mode === 'max' && value != null && Number(value) > target
+const MEAL_ICON = { breakfast: '🌅', lunch: '☀️', dinner: '🌙', snack: '🥜' }
+const GAP_COLOR = { short: COLORS.orange, over: COLORS.red, ok: COLORS.green, room: COLORS.textLight, none: COLORS.textLight }
+
+// 首页第一张卡：已吃 / 目标 / 还差，今天的话再给「再吃什么」的建议（算法在 shapeSuggest.js）
+function RemainingCard({ totals, steps, food, isToday, mobile, onRecipe }) {
+  const rows = remainingRows(totals, steps)
+  const s = suggest(totals, { cpEaten: cpBagsEaten(food) })
+  const th = { ...cell, fontWeight: 500, color: COLORS.textLight, fontSize: 12 }
+  const td = { ...cell, whiteSpace: 'normal', verticalAlign: 'top', fontSize: 13 }
   return (
-    <div style={{ background: '#fff', border: `1px solid ${COLORS.border}`, borderRadius: 12, padding: '12px 14px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: COLORS.textLight }}>
-        <span>{label}</span>
-        <span><span style={{ color: s.color }}>{s.icon}</span> {s.label}</span>
-      </div>
-      <div style={{ fontSize: 22, fontWeight: 700, color: COLORS.text, margin: '4px 0 6px' }}>
-        {value == null || (value === 0 && ok == null) ? '—' : fmt(value)}
-        <span style={{ fontSize: 12, fontWeight: 400, color: COLORS.textLight }}> / {mode === 'max' ? '≤ ' : ''}{fmt(target)} {unit}</span>
-      </div>
-      <div style={{ height: 6, borderRadius: 3, background: COLORS.bg, overflow: 'hidden' }} role="meter" aria-valuenow={value ?? 0} aria-valuemax={target} aria-label={label}>
-        <div style={{ width: `${pct}%`, height: '100%', borderRadius: 3, background: over ? COLORS.orange : COLORS.primary }} />
-      </div>
-    </div>
+    <Card title={isToday ? '🎯 今天还差多少' : '🎯 这天的结果'} extra={<span style={subtle}>{food.length ? `已记 ${food.length} 餐` : '还没记录饮食'}</span>} style={{ border: `1.5px solid ${COLORS.primary}` }}>
+      <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
+        <colgroup><col style={{ width: mobile ? '19%' : '16%' }} /><col style={{ width: mobile ? '22%' : '20%' }} /><col style={{ width: mobile ? '27%' : '24%' }} /><col /></colgroup>
+        <thead><tr><th style={th}>项目</th><th style={th}>已吃</th><th style={th}>目标</th><th style={th}>还差</th></tr></thead>
+        <tbody>
+          {rows.map(r => (
+            <tr key={r.key}>
+              <td style={{ ...td, fontWeight: 600 }}>{r.label}</td>
+              <td style={td}>{r.eaten}</td>
+              <td style={{ ...td, color: COLORS.textLight }}>{r.target}</td>
+              <td style={td}>
+                <span style={{ color: GAP_COLOR[r.status], fontWeight: r.status === 'short' || r.status === 'over' ? 700 : 400 }}>{r.gap}</span>
+                {r.sub && <div style={subtle}>{r.sub}</div>}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {isToday && <SuggestBlock s={s} mobile={mobile} onRecipe={onRecipe} />}
+    </Card>
   )
 }
+
+function SuggestBlock({ s, mobile, onRecipe }) {
+  const box = { marginTop: 12, padding: '10px 12px', borderRadius: 10, fontSize: 13, lineHeight: 1.7 }
+  const overNote = s.over.length > 0 && <div style={{ ...box, background: '#FEF2F2', color: COLORS.red }}>⚠ 今天{s.over.join('、')}已经超了，剩下的时间别再往这上面加；明天按基线吃回来。</div>
+  if (s.status === 'empty') {
+    return <div style={{ ...box, background: COLORS.bg }}>今天还没记录饮食。照「食谱」的基线吃：早餐 3 个蛋 + 1 袋 CP + 绿叶菜 + 半个牛油果，午餐 3 份蛋白，晚餐一份鱼或肉。<button onClick={onRecipe} style={linkBtn}>看食谱 ›</button></div>
+  }
+  if (s.status === 'done') return <div style={{ ...box, background: '#ECFDF5', color: COLORS.green }}>✅ 今天蛋白、热量都到位了，其余都没超，不用再吃了。</div>
+  if (s.status === 'over') return overNote
+  const head = s.status === 'protein'
+    ? <>👉 <b>蛋白还差 {s.need.p}g</b>{s.need.kcal > 0 ? `，热量离 1,500 底线还差 ${s.need.kcal}` : ''}。任选一种（需要的配菜已经算进去）：</>
+    : <>👉 蛋白够了，<b>热量还差 {s.need.kcal}</b>。挑一两样补上（脂肪不用特意补，这是为了别吃太少）：</>
+  return (
+    <>
+      {overNote}
+      <div style={{ ...box, background: '#EFF6FF', paddingBottom: 4 }}>
+        <div>{head}</div>
+        {s.note && <div style={subtle}>{s.note}</div>}
+        <div style={{ display: 'grid', gridTemplateColumns: mobile ? '1fr' : '1fr 1fr', gap: 8, margin: '8px 0' }}>
+          {s.options.map(o => (
+            <div key={o.key + o.main} style={{ display: 'flex', gap: 10, background: '#fff', borderRadius: 10, padding: '8px 10px', border: `1px solid ${o.warn.length ? '#FECACA' : COLORS.border}` }}>
+              <FoodImg k={o.key} size={44} />
+              <div style={{ minWidth: 0, flex: 1 }}>
+                <div style={{ fontWeight: 600 }}>{o.main}</div>
+                {o.side && <div style={{ fontSize: 12 }}>配 {o.side}</div>}
+                <div style={subtle}>+{o.gain.p}g 蛋白 · +{fmt(o.gain.kcal)} kcal</div>
+                <div style={{ fontSize: 12 }}>吃完：<span style={{ color: o.after.kcal < SHAPE_PLAN.daily.kcalFloor ? COLORS.orange : COLORS.text }}>{fmt(o.after.kcal)} kcal</span> · 蛋白 {o.after.p}g · 饱和 {o.after.sfa}g</div>
+                {o.warn.map(w => <div key={w} style={{ fontSize: 12, color: COLORS.red }}>⚠ {w}</div>)}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </>
+  )
+}
+
+// 今天吃了什么、练了什么（原来的饮食 / 训练两张卡合在一起）
+function TodayLog({ food, workouts, isToday, week }) {
+  return (
+    <Card title={isToday ? '📝 今天吃了 · 练了' : '📝 这天吃了 · 练了'} extra={<span style={subtle}>本周力量 {week.strength} / {SHAPE_PLAN.weekly.strength} · 有氧 {week.aerobicMin} / {SHAPE_PLAN.weekly.aerobicMin} 分钟</span>}>
+      {food.length === 0 && workouts.length === 0 && <div style={subtle}>{isToday ? '今天还没有记录。在 TG 发给大仙，或者直接在对话里告诉 AI。' : '这天没有记录。'}</div>}
+      {food.map(r => (
+        <div key={r.id} style={{ padding: '8px 0', borderTop: `1px solid ${COLORS.border}` }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '2px 8px' }}>
+            <span style={{ fontSize: 13, fontWeight: 600 }}>{MEAL_ICON[r.meal] || '🍽'} {MEALS.find(m => m.key === r.meal)?.label || r.meal}</span>
+            <span style={{ fontSize: 12, color: COLORS.text }}>{fmt(r.kcal)} kcal · <b>蛋白 {fmt(r.protein_g)}g</b> · 脂肪 {fmt(r.fat_g)}g{r.sat_fat_g != null ? `（饱和 ${fmt(r.sat_fat_g)}g）` : ''} · 净碳 {fmt(r.net_carb_g)}g</span>
+          </div>
+          <div style={{ ...subtle, color: COLORS.text }}>{r.items}</div>
+          {r.note && <div style={subtle}>{r.note}</div>}
+        </div>
+      ))}
+      {workouts.map(w => (
+        <div key={w.id} style={{ padding: '8px 0', borderTop: `1px solid ${COLORS.border}` }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '2px 8px' }}>
+            <span style={{ fontSize: 13, fontWeight: 600 }}>{w.kind === 'strength' ? '🏋️' : '🏃'} {WORKOUT_KINDS[w.kind] || w.kind} · {w.title}</span>
+            <span style={{ fontSize: 12, color: COLORS.text }}>{w.duration_min ? `${fmt(w.duration_min)} 分钟` : ''}{w.duration_min && w.kcal ? ' · ' : ''}{w.kcal ? `约 ${fmt(w.kcal)} kcal` : ''}</span>
+          </div>
+          {w.detail && <div style={{ ...subtle, color: COLORS.text, whiteSpace: 'pre-wrap' }}>{w.detail}</div>}
+        </div>
+      ))}
+    </Card>
+  )
+}
+
+const linkBtn = { border: 'none', background: 'none', color: COLORS.primaryDark, cursor: 'pointer', padding: 0, fontSize: 13 }

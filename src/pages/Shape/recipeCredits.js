@@ -29,3 +29,6 @@ export const RECIPE_CREDITS = [
   {key: "walnut",title: "4 walnut kernels",author: "Andrei Suslov",license: "CC BY-SA 3.0",licenseUrl: "https://creativecommons.org/licenses/by-sa/3.0",sourceUrl: "https://commons.wikimedia.org/wiki/File:4_walnut_kernels.jpg"},
   {key: "pumpkinSeed",title: "GREEN PUMPKIN SEEDS",author: "Ranjithkumar Murugesan",license: "CC0",licenseUrl: "http://creativecommons.org/publicdomain/zero/1.0/deed.en",sourceUrl: "https://commons.wikimedia.org/wiki/File:GREEN_PUMPKIN_SEEDS.jpg"},
 ]
+
+// 有图的食物（首页建议、食谱页共用）
+export const HAS_IMG = new Set(RECIPE_CREDITS.map(c => c.key))
