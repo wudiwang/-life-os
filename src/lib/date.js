@@ -4,6 +4,18 @@ export function todayStr() {
   return new Date().toLocaleDateString('sv-SE') // YYYY-MM-DD 本地时区
 }
 
+// 需要「今天」落在北京时间时用这个（浏览器在其他时区也不会偏一天）
+export function beijingToday() {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Shanghai',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(new Date())
+  const get = type => parts.find(part => part.type === type)?.value || ''
+  return `${get('year')}-${get('month')}-${get('day')}`
+}
+
 export function fmtDate(iso) {
   if (!iso) return '—'
   const d = new Date(iso)
