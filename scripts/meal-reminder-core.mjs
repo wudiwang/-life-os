@@ -69,6 +69,7 @@ export function buildReminder({ slot, today, yesterday = [], weekday, now = SLOT
     }
   }
 
+  if (slot === 'night' && t.sodium != null && t.sodium > LIMITS.sodiumMax) lines.push(`🧂 今天钠约 ${fmt(t.sodium)}mg（建议 ≤ ${fmt(LIMITS.sodiumMax)}），多喝水，明天少吃咸的`)
   lines.push(`💊 ${supplementsFor(slot, weekday, ateFish(today)).join('、')}`)
   if (slot === 'morning') lines.push('💧 先喝 500ml 水；今天目标 3–3.5L')
   if (slot === 'dinner') lines.push('⏰ 21:30 前吃完')

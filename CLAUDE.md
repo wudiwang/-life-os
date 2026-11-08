@@ -23,7 +23,7 @@ git push origin main → Vercel 自动构建发布（约1-2分钟）
 
 - 侧栏只常驻 `constants.PRIMARY_NAV`（现为 `['shape', 'recipe']`），其余 16 个模块折叠在「更多模块」里，功能和数据都在，只是不打扰。要恢复某个模块常驻，把它的 key 加进 `PRIMARY_NAV`。默认首页也是 `shape`（useUIStore / App.jsx 兜底）。
 - 页面 `Shape/ShapePage` **只做呈现**；纯计算在 `Shape/shapeCalc.js`（`npm run test:shape`），目标数字在 `Shape/shapePlan.js`，与 `docs/健康塑形计划.md` 同步修改。
-- 数据表 `shape_food_logs` / `shape_workouts` / `shape_daily`（`supabase/v18_shape.sql`）。**录入只走聊天**：大仙按 `docs/塑形数据录入总则.md` 估算热量、运动消耗并写库，再写当天 `shape_daily.coach_note`。
+- 数据表 `shape_food_logs` / `shape_workouts` / `shape_daily`（`supabase/v18_shape.sql`；v19 给饮食表加了 `sodium_mg / potassium_mg / magnesium_mg`）。**录入只走聊天**：大仙按 `docs/塑形数据录入总则.md` 估算热量、运动消耗并写库，再写当天 `shape_daily.coach_note`。
 - **大仙吃饭提醒（2026-11-08 起唯一的定时任务）**：`scripts/meal-reminder.mjs`（文案纯函数 `meal-reminder-core.mjs`，和首页同一套 shapeSuggest 算法，不经过 AI），launchd 每天 09:30 / 13:00 / 18:30 / 21:30 推 TG：今天吃了多少、还差多少、二选一吃法、这个时段该吃的补剂。用户要求其他定时任务全部暂停：Mac 上按 `bash scripts/install-launchd.sh --no-brief --no-sync` 安装（大仙常驻 + 吃饭提醒）；要恢复早晚简报 / 每晚同步，去掉对应的 `--no-xxx` 重装即可。手动试跑：`npm run remind -- --slot dinner --dry`。
 - 大仙收照片：`tg-bot.mjs` 下载到 `scripts/.tg-photos/`（gitignore），相册合并成一次（`tg-photo.mjs`），把本机路径交给本机大脑用 Read 看图。
 

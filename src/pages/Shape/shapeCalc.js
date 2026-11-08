@@ -25,7 +25,8 @@ export function sumFood(rows) {
     fat: a.fat + num(r.fat_g), satFat: a.satFat + num(r.sat_fat_g), netCarb: a.netCarb + num(r.net_carb_g),
   }), { kcal: 0, protein: 0, fat: 0, satFat: 0, netCarb: 0 })
   const hasSat = rows.some(r => r.sat_fat_g != null && r.sat_fat_g !== '')
-  return { kcal: round(t.kcal), protein: round(t.protein), fat: round(t.fat), satFat: hasSat ? round(t.satFat) : null, netCarb: round(t.netCarb, 1) }
+  const mg = key => rows.some(r => r[key] != null && r[key] !== '') ? round(rows.reduce((a, r) => a + num(r[key]), 0)) : null
+  return { kcal: round(t.kcal), protein: round(t.protein), fat: round(t.fat), satFat: hasSat ? round(t.satFat) : null, netCarb: round(t.netCarb, 1), sodium: mg('sodium_mg'), potassium: mg('potassium_mg'), magnesium: mg('magnesium_mg') }
 }
 
 // 有氧分钟：专门的有氧和出去走的那种（kind=cardio/walk），日常步数不算

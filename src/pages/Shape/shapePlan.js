@@ -14,7 +14,12 @@ export const SHAPE_PLAN = {
     fatMin: 80,          // 下限：蛋白 150g + 碳水 30g 时，热量要到 1,500 约需 87g 脂肪；低于它就成了「高蛋白低热量」的蛋白节食
     satFat: 20,          // 上限（≈ 总热量 10%）；ApoB 偏高时收紧到 13–15
     steps: 8000,         // 下限
+    sodiumMax: 3000,     // 钠（mg）建议上限：血压没测前别长期超
+    potassiumMin: 3400,  // 钾（mg）下限：食物 + 补剂
+    magnesiumMin: 420,   // 镁（mg）下限：食物 + 补剂
   },
+  // 每天按清单吃的补剂（第二大脑「营养补剂清单」）：柠檬酸钾 6 粒、镁 2 片起
+  supplements: { potassium: 594, magnesium: 200 },
   weekly: { strength: 3, aerobicMin: 150 }, // 有氧 = 心率约 118–140 的坡度走/骑车/游泳，不含日常步数
 }
 

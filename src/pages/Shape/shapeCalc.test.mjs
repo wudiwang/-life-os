@@ -17,13 +17,20 @@ test('date helpers stay on the calendar day and weeks start on Monday', () => {
 
 test('food totals ignore empty values', () => {
   assert.deepEqual(sumFood([{ kcal: 500, protein_g: 40, fat_g: 30, net_carb_g: 5.25 }, { kcal: '300', protein_g: null, net_carb_g: '' }]),
-    { kcal: 800, protein: 40, fat: 30, satFat: null, netCarb: 5.3 })
+    { kcal: 800, protein: 40, fat: 30, satFat: null, netCarb: 5.3, sodium: null, potassium: null, magnesium: null })
 })
 
 test('saturated fat is null until some row records it, then sums like the rest', () => {
   assert.equal(sumFood([{ kcal: 500, sat_fat_g: null }, { kcal: 300 }]).satFat, null)
   assert.equal(sumFood([{ sat_fat_g: 0 }]).satFat, 0) // 明确填了 0 就是 0，不是未记录
   assert.equal(sumFood([{ sat_fat_g: 8.4 }, { sat_fat_g: '6' }, { kcal: 200 }]).satFat, 14)
+})
+
+test('electrolytes add up per day and stay null until recorded', () => {
+  const t = sumFood([{ sodium_mg: 4660, potassium_mg: 2100, magnesium_mg: 175 }, { sodium_mg: 120, potassium_mg: '600' }, { kcal: 30 }])
+  assert.equal(t.sodium, 4780)
+  assert.equal(t.potassium, 2700)
+  assert.equal(t.magnesium, 175)
 })
 
 test('aerobic minutes count cardio and walks, not strength', () => {

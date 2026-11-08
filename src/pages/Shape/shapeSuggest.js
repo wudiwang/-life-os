@@ -14,6 +14,7 @@ export const LIMITS = {
   satFat: d.satFat,       // 上限
   netCarb: d.netCarb,     // 上限
   steps: d.steps,         // 下限
+  sodiumMax: d.sodiumMax, // 钠上限（mg）
   cpBags: 4,              // CP 一天 ≤ 4 袋（每袋钠 310mg）
 }
 export const MEAL_MAX_PROTEIN = 60 // 一顿最多按 60g 蛋白建议，剩下的下一顿再补

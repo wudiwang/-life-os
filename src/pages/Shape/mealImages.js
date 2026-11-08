@@ -12,9 +12,9 @@ const RULES = [
   ['cp', /CP|ซีพี/i],
   ['friedChicken', /肯德基|KFC|原味鸡|炸鸡|鸡块|麦乐鸡/i],
   ['coffee', /咖啡|美式|coffee/i],
-  ['salad', /沙拉/],
+  ['salad', /沙拉|salad/i],
   ['eggWhite', /蛋清/],
-  ['egg', /鸡蛋|水煮蛋|煎蛋|茶叶蛋|炒蛋|荷包蛋/],
+  ['egg', /鸡蛋|鸭蛋|水煮蛋|煎蛋|茶叶蛋|炒蛋|荷包蛋/],
   ['avocado', /牛油果/],
   ['mackerel', /青花鱼|鲭鱼|ซาบะ|saba/i],
   ['salmon', /三文鱼/],
@@ -48,6 +48,18 @@ export function imagesFor(items, max = 3) {
   return keys.slice(0, max)
 }
 
+// 一餐的文字拆成一条条食物：先去掉括号里的备注（里面也可能有逗号），再按「、，,；;+」切开，
+// 每条配一张图（认不出就没有图）。「煎牛排用油 5g」这类说的是油，配油的图。
+const OIL = /橄榄油|用油|黄油|椰子油|猪油|MCT/i
+export function splitItems(text) {
+  return String(text || '')
+    .replace(/（[^）]*）|\([^)]*\)/g, '')
+    .split(/[、，,；;+＋]/)
+    .map(s => s.replace(/\s+/g, ' ').trim())
+    .filter(Boolean)
+    .map(s => ({ text: s, img: OIL.test(s) ? 'oliveOil' : imagesFor(s, 1)[0] || null }))
+}
+
 const CN = ['一', '二', '三', '四', '五', '六', '七', '八', '九', '十']
 const timeFmt = new Intl.DateTimeFormat('zh-CN', { timeZone: 'Asia/Bangkok', hour: '2-digit', minute: '2-digit', hour12: false })
 export const bangkokTime = iso => (iso ? timeFmt.format(new Date(iso)) : '')
@@ -64,6 +76,8 @@ export function mealCards(foodRows) {
       imgs: imagesFor(r.items),
       kcal: Number(r.kcal) || 0,
       p: Number(r.protein_g) || 0,
+      f: Number(r.fat_g) || 0,
+      items: splitItems(r.items),
       text: String(r.items || '').replace(/（[^）]*）|\([^)]*\)/g, '').replace(/\s+/g, ' ').trim(),
     }))
 }

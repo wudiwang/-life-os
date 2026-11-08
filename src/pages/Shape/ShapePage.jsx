@@ -14,8 +14,7 @@ import { useUIStore } from '../../store/useUIStore'
 import { SHAPE_PLAN, WORKOUT_KINDS } from './shapePlan'
 import { addDays, sumFood, weightOn, energyBalance, weekSummary, weightTrend, planDay } from './shapeCalc'
 import { suggest, cpBagsEaten, LIMITS } from './shapeSuggest'
-import { mealCards, imageName } from './mealImages'
-import { HAS_IMG } from './recipeCredits'
+import { mealCards } from './mealImages'
 import { FoodImg } from './FoodImg'
 
 const subtle = { fontSize: 12, color: COLORS.textLight, lineHeight: 1.6 }
@@ -142,6 +141,7 @@ function TopSummary({ totals, food, isToday, mobile, onRecipe }) {
       </div>
       {mobile && <div style={{ ...subtle, marginTop: 4 }}>热量目标 {fmt(L.kcalFloor)}–{fmt(L.kcalCap)} kcal</div>}
       <Caps totals={totals} />
+      <Electrolytes totals={totals} />
       {isToday && <Advice totals={totals} food={food} mobile={mobile} onRecipe={onRecipe} />}
     </Card>
   )
@@ -201,24 +201,28 @@ function Advice({ totals, food, mobile, onRecipe }) {
   )
 }
 
-// ── 今天吃了：每顿一张图卡 ──
+// ── 今天吃了：每顿一个标题，下面逐条食物（左图右字）──
 function MealsCard({ food, workouts, isToday, mobile }) {
   const cards = mealCards(food)
   return (
     <Card title={isToday ? '🍽 今天吃了' : '🍽 这天吃了'}>
       {cards.length === 0 && workouts.length === 0 && <div style={subtle}>{isToday ? '还没有记录。吃了什么在对话里或 TG 里说一声就行。' : '这天没有记录。'}</div>}
-      <div style={{ display: 'grid', gridTemplateColumns: mobile ? '1fr' : '1fr 1fr', gap: 10 }}>
-        {cards.map(c => (
-          <div key={c.id} style={{ display: 'flex', gap: 12, alignItems: 'center', minWidth: 0 }}>
-            <Collage keys={c.imgs} size={mobile ? 76 : 84} />
-            <div style={{ minWidth: 0, flex: 1 }}>
-              <div style={subtle}>{c.title}{c.time ? ` · ${c.time}` : ''}</div>
-              <div style={{ fontSize: 16, fontWeight: 700 }}>{fmt(c.kcal)} kcal · 蛋白 {fmt(c.p)}g</div>
-              <div style={{ ...subtle, color: COLORS.text, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{c.text}</div>
-            </div>
+      {cards.map((c, idx) => (
+        <div key={c.id} style={{ borderTop: idx ? `1px solid ${COLORS.border}` : 'none', paddingTop: idx ? 10 : 0, marginTop: idx ? 10 : 0 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', flexWrap: 'wrap', gap: '2px 10px' }}>
+            <div style={{ fontSize: 15, fontWeight: 700 }}>{c.title}<span style={{ ...subtle, fontWeight: 400 }}>{c.time ? ` · ${c.time}` : ''}</span></div>
+            <div style={{ fontSize: 13 }}>{fmt(c.kcal)} kcal · <b>蛋白 {fmt(c.p)}g</b> · 脂肪 {fmt(c.f)}g</div>
           </div>
-        ))}
-      </div>
+          <div style={{ display: 'grid', gridTemplateColumns: mobile ? '1fr' : '1fr 1fr', gap: '6px 16px', marginTop: 8 }}>
+            {c.items.map((it, i) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+                {it.img ? <FoodImg k={it.img} size={40} /> : <div style={{ width: 40, height: 40, borderRadius: 8, background: COLORS.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>🍽</div>}
+                <div style={{ fontSize: 14, minWidth: 0 }}>{it.text}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
       {workouts.length > 0 && (
         <div style={{ marginTop: cards.length ? 12 : 0, paddingTop: cards.length ? 10 : 0, borderTop: cards.length ? `1px solid ${COLORS.border}` : 'none', display: 'flex', flexDirection: 'column', gap: 4 }}>
           {workouts.map(w => (
@@ -233,23 +237,20 @@ function MealsCard({ food, workouts, isToday, mobile }) {
   )
 }
 
-// 一餐的拼图：1 张铺满；2 张左右各半；3 张左边一张大、右边上下两张
-function Collage({ keys, size }) {
-  const box = { width: size, height: size, borderRadius: 12, overflow: 'hidden', flexShrink: 0, background: COLORS.bg, display: 'grid', gap: 2 }
-  if (!keys.length) return <div style={{ ...box, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: size / 2.4 }}>🍽</div>
-  if (keys.length === 1) return <div style={box}><Cell k={keys[0]} /></div>
-  if (keys.length === 2) return <div style={{ ...box, gridTemplateColumns: '1fr 1fr' }}><Cell k={keys[0]} /><Cell k={keys[1]} /></div>
+// 电解质（mg）：钠看食物；钾、镁把每天按清单吃的补剂加上。没记录时不显示
+function Electrolytes({ totals }) {
+  const d = SHAPE_PLAN.daily, sup = SHAPE_PLAN.supplements
+  if (totals.sodium == null && totals.potassium == null && totals.magnesium == null) return null
+  const na = totals.sodium || 0, k = (totals.potassium || 0) + sup.potassium, mg = (totals.magnesium || 0) + sup.magnesium
+  const item = (label, text, color) => <span style={{ color }}>{label} {text}</span>
   return (
-    <div style={{ ...box, gridTemplateColumns: '3fr 2fr', gridTemplateRows: '1fr 1fr' }}>
-      <div style={{ gridRow: '1 / 3' }}><Cell k={keys[0]} /></div>
-      <Cell k={keys[1]} /><Cell k={keys[2]} />
+    <div style={{ ...subtle, marginTop: 4, display: 'flex', flexWrap: 'wrap', gap: '2px 14px' }}>
+      <span>电解质（mg）</span>
+      {item('钠', `${fmt(na)}/${fmt(d.sodiumMax)}`, na > d.sodiumMax ? COLORS.red : COLORS.textLight)}
+      {item('钾', `${fmt(totals.potassium || 0)}+补剂${sup.potassium}/${fmt(d.potassiumMin)}`, k < d.potassiumMin ? COLORS.orange : COLORS.textLight)}
+      {item('镁', `${fmt(totals.magnesium || 0)}+补剂${sup.magnesium}/${d.magnesiumMin}`, mg < d.magnesiumMin ? COLORS.orange : COLORS.textLight)}
     </div>
   )
-}
-
-function Cell({ k }) {
-  if (!HAS_IMG.has(k)) return <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: COLORS.textLight, fontSize: 12 }}>{imageName(k).slice(0, 1)}</div>
-  return <img src={`/recipe/${k}.jpg`} alt={imageName(k)} loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
 }
 
 const dayBtn = { minHeight: 36, borderRadius: 8, border: `1px solid ${COLORS.border}`, background: '#fff', color: COLORS.text, fontSize: 13, cursor: 'pointer', padding: '0 10px' }

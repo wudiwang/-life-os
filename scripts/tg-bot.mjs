@@ -78,7 +78,7 @@ work_todos(title,priority:high/mid/low,due_date,status:open/done) + work_logs(lo
 explore_records(title,category:food/travel/experience/insight/other,record_date,location,rating,content) 探索 | knowledge_notes(title,category,tags,content,source) 第二大脑
 relation_people(name,rel_type:family/friend/love,birthday,closeness) + relation_logs(person_id,log_date,event,feeling) 情感 | ai_reviews(module,prompt_summary,content) AI分析历史 | life_stage(field:principle/stage/focus/advice,content) 人生阶段
 okr_objectives(level:year/quarter,period,title,track,why,metric,metric_target,metric_current,status) 年度/季度目标 | weekly_actions(title,detail,track,objective_id,per_week,weekdays,active,sort_order) 每周行为契约 + weekly_action_logs(action_id,log_date) 打卡 | principle_logs(log_date,content,skipped) 核心原则每日落实 | daily_focus(log_date,track:work/trade/life,content,win) 每日三向
-shape_food_logs(log_date,meal:breakfast/lunch/dinner/snack,items,kcal,protein_g,fat_g,sat_fat_g,net_carb_g,basis:label/estimate,source,note) 塑形饮食 | shape_workouts(log_date,kind:strength/cardio/walk/other,title,detail,duration_min,kcal) 塑形训练 | shape_daily(log_date 唯一,weight_kg,waist_cm,steps,sleep_h,active_kcal,feeling,coach_note) 塑形每日
+shape_food_logs(log_date,meal:breakfast/lunch/dinner/snack,items,kcal,protein_g,fat_g,sat_fat_g,net_carb_g,sodium_mg,potassium_mg,magnesium_mg,basis:label/estimate,source,note) 塑形饮食 | shape_workouts(log_date,kind:strength/cardio/walk/other,title,detail,duration_min,kcal) 塑形训练 | shape_daily(log_date 唯一,weight_kg,waist_cm,steps,sleep_h,active_kcal,feeling,coach_note) 塑形每日
 
 ## 行为准则
 1. 用户随口说的事，主动判断该进哪张表：如"今天心情不错，跑了5公里" → journal_entries 记一笔 + 若有跑步习惯则 habit_logs 打卡；拿不准就问一句。
@@ -106,7 +106,7 @@ shape_food_logs(log_date,meal:breakfast/lunch/dinner/snack,items,kcal,protein_g,
 13. 他现在是远程项目经理，最大的压力源是"远程工作的价值不可见"。当他表达工作焦虑时，别只安慰——把话题引到"这周的可见交付物做了没有"（周报、项目过账），那才是这类焦虑的正面战场。
 14. 健康塑形是当前唯一主线（最高优先）：他发食物照片、说吃了什么、说运动内容、报体重/腰围/步数/睡眠、发手表或血糖截图时，先读 docs/塑形数据录入总则.md 和 docs/健康塑形计划.md，严格按总则计算、写 shape_* 三张表、按模板回复，并更新当天 shape_daily.coach_note。`
 
-function askClaude(chatId, userText) {
+function askClaude(chatId, userText, retried = false) {
   let sid = sessions[chatId]
   if (sid && !sid.includes(':')) sid = `claude:${sid}`
   const today = new Date().toLocaleDateString('sv-SE')
@@ -127,6 +127,13 @@ function askClaude(chatId, userText) {
     return { text: result.text }
   } catch (error) {
     console.error('本机大脑调用失败：', error.message)
+    // 续接旧会话失败（换了电脑、会话过期都会这样）：丢掉旧会话，带完整人设重开一次
+    if (sid && !retried) {
+      console.log('↻ 旧会话接不上，开新会话重试')
+      delete sessions[chatId]
+      saveSessions()
+      return askClaude(chatId, userText, true)
+    }
     return { text: '（大脑开小差了，稍后再试，或看电脑控制台日志）' }
   }
 }

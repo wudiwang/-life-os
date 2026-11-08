@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { imagesFor, mealCards, imageName, bangkokTime } from './mealImages.js'
+import { imagesFor, mealCards, imageName, bangkokTime, splitItems } from './mealImages.js'
 import { HAS_IMG } from './recipeCredits.js'
 
 test('pictures follow the order foods are mentioned, max 3, CP chicken shows only the CP picture', () => {
@@ -18,6 +18,15 @@ test('every picture key the matcher can return has an image file registered', ()
     assert.ok(HAS_IMG.has(k), `${k} 没有图片`)
     assert.ok(imageName(k), `${k} 没有名字`)
   }
+})
+
+test('a meal is split into one row per food, each with its own picture', () => {
+  const items = splitItems('Café Amazon 无糖黑咖啡 1 杯、肯德基吮指原味鸡 2 块（带皮）、CP 打抛嫩鸡胸 2 袋、鸡蛋 2 个、咸鸭蛋 1 个、7-11 EZY FRESH Party Salad 1 盒（114g）')
+  assert.deepEqual(items.map(i => i.text), ['Café Amazon 无糖黑咖啡 1 杯', '肯德基吮指原味鸡 2 块', 'CP 打抛嫩鸡胸 2 袋', '鸡蛋 2 个', '咸鸭蛋 1 个', '7-11 EZY FRESH Party Salad 1 盒'])
+  assert.deepEqual(items.map(i => i.img), ['coffee', 'friedChicken', 'cp', 'egg', 'egg', 'salad'])
+  const steak = splitItems('带油边牛排 200g（按生重，油边一起吃）、煎牛排用油约 5g')
+  assert.deepEqual(steak.map(i => i.text), ['带油边牛排 200g', '煎牛排用油约 5g'])
+  assert.deepEqual(steak.map(i => i.img), ['beefLean', 'oliveOil'])
 })
 
 test('meal cards are numbered by time, snacks are called 加餐, notes in brackets are dropped', () => {

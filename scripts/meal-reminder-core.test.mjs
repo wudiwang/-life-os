@@ -38,6 +38,8 @@ test('night reminder gives only one quick option, done days say stop', () => {
   assert.match(night, /22:00 前补一样：/)
   assert.ok(!/二选一/.test(night))
   assert.match(night, /镁 2–3 片/)
+  const salty = buildReminder({ slot: 'night', today: [{ ...TODAY[0], sodium_mg: 4660 }], weekday: 7 })
+  assert.match(salty, /今天钠约 4,660mg（建议 ≤ 3,000）/)
   const done = buildReminder({ slot: 'night', today: [{ items: '牛排', kcal: 1700, protein_g: 160, fat_g: 90, sat_fat_g: 16, net_carb_g: 20 }], weekday: 7 })
   assert.match(done, /✅ 今天都到位了/)
 })
