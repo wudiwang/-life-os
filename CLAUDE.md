@@ -24,6 +24,7 @@ git push origin main → Vercel 自动构建发布（约1-2分钟）
 - 侧栏只常驻 `constants.PRIMARY_NAV`（现为 `['shape', 'recipe']`），其余 16 个模块折叠在「更多模块」里，功能和数据都在，只是不打扰。要恢复某个模块常驻，把它的 key 加进 `PRIMARY_NAV`。默认首页也是 `shape`（useUIStore / App.jsx 兜底）。
 - 页面 `Shape/ShapePage` **只做呈现**；纯计算在 `Shape/shapeCalc.js`（`npm run test:shape`），目标数字在 `Shape/shapePlan.js`，与 `docs/健康塑形计划.md` 同步修改。
 - 数据表 `shape_food_logs` / `shape_workouts` / `shape_daily`（`supabase/v18_shape.sql`）。**录入只走聊天**：大仙按 `docs/塑形数据录入总则.md` 估算热量、运动消耗并写库，再写当天 `shape_daily.coach_note`。
+- **大仙吃饭提醒（2026-11-08 起唯一的定时任务）**：`scripts/meal-reminder.mjs`（文案纯函数 `meal-reminder-core.mjs`，和首页同一套 shapeSuggest 算法，不经过 AI），launchd 每天 09:30 / 13:00 / 18:30 / 21:30 推 TG：今天吃了多少、还差多少、二选一吃法、这个时段该吃的补剂。用户要求其他定时任务全部暂停：Mac 上按 `bash scripts/install-launchd.sh --no-brief --no-sync` 安装（大仙常驻 + 吃饭提醒）；要恢复早晚简报 / 每晚同步，去掉对应的 `--no-xxx` 重装即可。手动试跑：`npm run remind -- --slot dinner --dry`。
 - 大仙收照片：`tg-bot.mjs` 下载到 `scripts/.tg-photos/`（gitignore），相册合并成一次（`tg-photo.mjs`），把本机路径交给本机大脑用 Read 看图。
 
 ## 模块地图（src/pages/ + registry.js 登记）
@@ -104,6 +105,8 @@ Windows 计划任务 life-os-daily-sync（每天 22:07）
 **快记链路**：输入 → 原话立即写 `journal_entries.raw_input`（保底不丢）→ 建 ai_jobs → 提炼回来弹确认卡片 → 用户勾选后：整理后正文进 `content`、知识资产进 `knowledge_notes`、待办进 `work_todos`。本机不在线就降级为原样存。
 
 ## 每日闭环：TG 才是入口，网页是回顾工具（IMPORTANT）
+
+> ⏸ 2026-11-08 起早晚简报和每晚项目同步已暂停，只保留塑形的吃饭提醒（见「当前主线」）。下面是这套机制本身的说明，恢复时照用。
 
 网页需要用户「主动想起来」，而这类系统的价值恰恰依赖于「不用想起来」——靠自律提高打开率是死循环。
 所以每日闭环全部走 Telegram，网页降级为周末回顾。

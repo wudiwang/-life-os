@@ -4,9 +4,12 @@
 # （claude CLI 要用登录用户的订阅凭据，所以不用系统级 LaunchDaemon）。
 #
 # 用法：
-#   bash scripts/install-launchd.sh                      # 全部安装：大仙常驻 + 早晚简报 + 每晚项目同步
+#   bash scripts/install-launchd.sh                      # 全部安装：大仙常驻 + 吃饭提醒 + 早晚简报 + 每晚项目同步
+#   bash scripts/install-launchd.sh --no-brief --no-sync # 现行配置（2026-11-08 起）：只留大仙 + 吃饭提醒
+#   bash scripts/install-launchd.sh --meals 09:30,13:00,18:30,21:30   # 吃饭提醒的 4 个时间（早/午/晚/睡前）
 #   bash scripts/install-launchd.sh --morning 08:00 --evening 22:00 --sync-at 21:30
 #   bash scripts/install-launchd.sh --no-bot             # 只装定时任务，不装大仙常驻
+#   bash scripts/install-launchd.sh --no-meals           # 不装吃饭提醒
 #   bash scripts/install-launchd.sh --status             # 查看各任务状态
 #   bash scripts/install-launchd.sh --uninstall          # 全部移除
 #
@@ -15,14 +18,19 @@
 # 行为说明：
 #   - 大仙：登录即启动，进程退出（非正常）自动拉起；bot-forever 自带单实例锁。
 #   - 定时任务：到点 Mac 在睡眠，launchd 会在唤醒后补跑一次；关机期间错过的不补。
-#   - 日志：~/Library/Logs/life-os/{bot,brief,sync}.log
+#   - 日志：~/Library/Logs/life-os/{bot,meal,brief,sync}.log
+#   - 每次安装都会先卸掉全部任务再按参数装，所以「暂停」某项 = 带上对应的 --no-xxx 重装一次。
 
 set -euo pipefail
 
 MORNING='08:30'
 EVENING='21:30'
 SYNC_AT='22:07'
+MEALS='09:30,13:00,18:30,21:30'
 WITH_BOT=1
+WITH_BRIEF=1
+WITH_SYNC=1
+WITH_MEALS=1
 ACTION='install'
 
 while [ $# -gt 0 ]; do
@@ -31,9 +39,13 @@ while [ $# -gt 0 ]; do
     --evening) EVENING="$2"; shift 2 ;;
     --sync-at) SYNC_AT="$2"; shift 2 ;;
     --no-bot) WITH_BOT=0; shift ;;
+    --meals) MEALS="$2"; shift 2 ;;
+    --no-brief) WITH_BRIEF=0; shift ;;
+    --no-sync) WITH_SYNC=0; shift ;;
+    --no-meals) WITH_MEALS=0; shift ;;
     --uninstall) ACTION='uninstall'; shift ;;
     --status) ACTION='status'; shift ;;
-    -h|--help) sed -n '2,19p' "$0"; exit 0 ;;
+    -h|--help) sed -n '2,24p' "$0"; exit 0 ;;
     *) echo "✗ 未知参数：$1（--help 查看用法）"; exit 1 ;;
   esac
 done
@@ -47,7 +59,10 @@ LABEL_BOT='com.lifeos.bot'
 LABEL_AM='com.lifeos.brief-morning'
 LABEL_PM='com.lifeos.brief-evening'
 LABEL_SYNC='com.lifeos.daily-sync'
-ALL_LABELS="$LABEL_BOT $LABEL_AM $LABEL_PM $LABEL_SYNC"
+MEAL_SLOTS='morning lunch dinner night'
+MEAL_LABELS=''
+for slot in $MEAL_SLOTS; do MEAL_LABELS="$MEAL_LABELS com.lifeos.meal-$slot"; done
+ALL_LABELS="$LABEL_BOT $LABEL_AM $LABEL_PM $LABEL_SYNC$MEAL_LABELS"
 
 xml_escape() { printf '%s' "$1" | sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g'; }
 
@@ -145,6 +160,9 @@ calendar() {
 
 # 先校验时间，避免装到一半才报错（在当前 shell 里调用，格式不对会直接 exit）
 parse_time "$MORNING" >/dev/null; parse_time "$EVENING" >/dev/null; parse_time "$SYNC_AT" >/dev/null
+IFS=',' read -r -a MEAL_TIMES <<<"$MEALS"
+if [ "${#MEAL_TIMES[@]}" -ne 4 ]; then echo "✗ --meals 要给 4 个时间（早,午,晚,睡前），现在是：$MEALS"; exit 1; fi
+for t in "${MEAL_TIMES[@]}"; do parse_time "$t" >/dev/null; done
 
 if [ "$WITH_BOT" = 1 ] && [ -f "$PROJ/scripts/.bot.lock" ]; then
   pid="$(tr -dc '0-9' < "$PROJ/scripts/.bot.lock")"
@@ -157,12 +175,30 @@ fi
 mkdir -p "$AGENTS" "$LOGS"
 for label in $ALL_LABELS; do unload "$label" >/dev/null; done
 
-write_plist "$LABEL_AM" brief "$(calendar "$MORNING")" 0 scripts/daily-brief.mjs --morning
-echo "✅ 已注册：$LABEL_AM  每天 $MORNING（早间简报）"
-write_plist "$LABEL_PM" brief "$(calendar "$EVENING")" 0 scripts/daily-brief.mjs --evening
-echo "✅ 已注册：$LABEL_PM  每天 $EVENING（晚间收工三问）"
-write_plist "$LABEL_SYNC" sync "$(calendar "$SYNC_AT")" 0 scripts/sync-project-progress.mjs
-echo "✅ 已注册：$LABEL_SYNC  每天 $SYNC_AT（项目进度同步）"
+if [ "$WITH_MEALS" = 1 ]; then
+  i=0
+  for slot in $MEAL_SLOTS; do
+    t="${MEAL_TIMES[$i]}"; i=$((i + 1))
+    write_plist "com.lifeos.meal-$slot" meal "$(calendar "$t")" 0 scripts/meal-reminder.mjs --slot "$slot"
+    echo "✅ 已注册：com.lifeos.meal-$slot  每天 ${t}（吃饭提醒）"
+  done
+else
+  echo "⏸ 吃饭提醒：未安装（--no-meals）"
+fi
+if [ "$WITH_BRIEF" = 1 ]; then
+  write_plist "$LABEL_AM" brief "$(calendar "$MORNING")" 0 scripts/daily-brief.mjs --morning
+  echo "✅ 已注册：$LABEL_AM  每天 ${MORNING}（早间简报）"
+  write_plist "$LABEL_PM" brief "$(calendar "$EVENING")" 0 scripts/daily-brief.mjs --evening
+  echo "✅ 已注册：$LABEL_PM  每天 ${EVENING}（晚间收工三问）"
+else
+  echo "⏸ 早晚简报：已暂停（--no-brief）"
+fi
+if [ "$WITH_SYNC" = 1 ]; then
+  write_plist "$LABEL_SYNC" sync "$(calendar "$SYNC_AT")" 0 scripts/sync-project-progress.mjs
+  echo "✅ 已注册：$LABEL_SYNC  每天 ${SYNC_AT}（项目进度同步）"
+else
+  echo "⏸ 每晚项目同步：已暂停（--no-sync）"
+fi
 if [ "$WITH_BOT" = 1 ]; then
   write_plist "$LABEL_BOT" bot '' 1 scripts/bot-forever.mjs
   echo "✅ 已注册：$LABEL_BOT  登录即启动，异常退出自动拉起"
@@ -171,5 +207,5 @@ fi
 echo
 echo "日志目录：$LOGS"
 echo '查看状态：bash scripts/install-launchd.sh --status'
-echo "立即试跑：launchctl kickstart $DOMAIN/$LABEL_SYNC"
+echo "立即试跑：launchctl kickstart $DOMAIN/com.lifeos.meal-dinner"
 echo '提醒：合盖或睡眠时大仙离线、简报会延后到唤醒后补推。'
