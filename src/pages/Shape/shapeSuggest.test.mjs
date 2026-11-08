@@ -93,8 +93,9 @@ test('11-08: carbs already full and protein nearly met → a real 40g-protein me
 test('11-08 after the salted duck egg: carbs already over → still oil only, and the over item is reported', () => {
   const s = suggest({ kcal: 1248, protein: 136, fat: 62, satFat: 13, netCarb: 30.5 }, { cpEaten: 2 })
   assert.deepEqual(s.over, ['净碳'])
-  assert.equal(s.options[0].key, 'beefLean')
+  assert.ok(['chickenBreast', 'beefLean', 'shrimp'].includes(s.options[0].key)) // 精瘦、不带碳水的排前面
   assert.equal(s.options[0].side, '橄榄油 15g')
+  assert.ok(s.options.find(o => o.key === 'cp').warn.some(w => w.includes('净碳已经超了')))
   assert.ok(s.options.every(o => !o.side || !o.side.includes('菜心')))
 })
 

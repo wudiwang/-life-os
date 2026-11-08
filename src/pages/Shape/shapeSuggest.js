@@ -123,6 +123,9 @@ export function suggest(totals, { cpEaten = 0, mealMax = MEAL_MAX_PROTEIN, L = L
         }
       }
       const warn = newOvers(t, a, L)
+      const mainG = sumItems(main)
+      if (t.c > L.netCarb && mainG.c > 0.5) warn.push(`净碳已经超了，这个还会再加 ${mainG.c}g`)
+      if (t.sfa > L.satFat && mainG.sfa > 0.5) warn.push(`饱和脂肪已经超了，这个还会再加 ${mainG.sfa}g`)
       if (key === 'cp') {
         const bags = cpEaten + main[0][1] / RECIPE_FOODS.cp.unit.g
         if (bags > L.cpBags) warn.push(`今天 CP 会到 ${bags} 袋（钠约 ${fmt(bags * 310)}mg，建议 ≤ ${L.cpBags} 袋）`)
