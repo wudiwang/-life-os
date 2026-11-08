@@ -77,3 +77,15 @@ test('all met → done; something over → over', () => {
   assert.deepEqual(s.over, ['饱和脂肪'])
   assert.equal(suggest({ kcal: 0, protein: 0, fat: 0, satFat: null, netCarb: 0 }).status, 'empty')
 })
+
+test('11-08: carbs already full and protein nearly met → a real 40g-protein meal with oil only, best-fitting first', () => {
+  const s = suggest({ kcal: 1143, protein: 128, fat: 55, satFat: 11, netCarb: 29.2 }, { cpEaten: 2 })
+  assert.equal(s.status, 'protein')
+  assert.equal(s.need.p, 22)
+  const top = s.options[0]
+  assert.equal(top.key, 'beefLean')               // 唯一能吃到 1500 的精瘦选项
+  assert.ok(top.gain.p >= 40)
+  assert.equal(top.side, '橄榄油 15g')             // 加菜会超碳水，只淋油
+  assert.ok(top.after.kcal >= 1500 && top.after.c <= 30 && top.after.sfa <= 20)
+  assert.ok(s.options.find(o => o.key === 'cp').warn.length) // 再吃 3 袋 CP 就 5 袋
+})

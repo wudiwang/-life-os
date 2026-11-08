@@ -28,6 +28,9 @@ export const RECIPE_CREDITS = [
   {key: "almond",title: "Sa almonds",author: "Sanjay Acharya",license: "CC BY-SA 3.0",licenseUrl: "http://creativecommons.org/licenses/by-sa/3.0/",sourceUrl: "https://commons.wikimedia.org/wiki/File:Sa_almonds.jpg"},
   {key: "walnut",title: "4 walnut kernels",author: "Andrei Suslov",license: "CC BY-SA 3.0",licenseUrl: "https://creativecommons.org/licenses/by-sa/3.0",sourceUrl: "https://commons.wikimedia.org/wiki/File:4_walnut_kernels.jpg"},
   {key: "pumpkinSeed",title: "GREEN PUMPKIN SEEDS",author: "Ranjithkumar Murugesan",license: "CC0",licenseUrl: "http://creativecommons.org/publicdomain/zero/1.0/deed.en",sourceUrl: "https://commons.wikimedia.org/wiki/File:GREEN_PUMPKIN_SEEDS.jpg"},
+  {key: "friedChicken",title: "Fried-Chicken-Set",author: "Evan-Amos",license: "CC0",licenseUrl: "http://creativecommons.org/publicdomain/zero/1.0/deed.en",sourceUrl: "https://commons.wikimedia.org/wiki/File:Fried-Chicken-Set.jpg"},
+  {key: "coffee",title: "Cup of black coffee",author: "ସୁଭ ପା/Subhashish Panigrahi",license: "CC BY-SA 3.0",licenseUrl: "https://creativecommons.org/licenses/by-sa/3.0",sourceUrl: "https://commons.wikimedia.org/wiki/File:Cup_of_black_coffee.jpg"},
+  {key: "salad",title: "Fresh salad with arugula, cabbage and tomato in a glass bowl",author: "Horacio Cambeiro",license: "CC BY-SA 3.0",licenseUrl: "https://creativecommons.org/licenses/by-sa/3.0",sourceUrl: "https://commons.wikimedia.org/wiki/File:Fresh_salad_with_arugula,_cabbage_and_tomato_in_a_glass_bowl.jpg"},
 ]
 
 // 有图的食物（首页建议、食谱页共用）

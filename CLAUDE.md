@@ -31,7 +31,7 @@ git push origin main → Vercel 自动构建发布（约1-2分钟）
 | 页面 | 文件 | 说明 |
 |---|---|---|
 | 食谱 | Shape/RecipePage | 塑形的一日基线 / 一周食谱 / 蛋白替换（1 份 = 18g = 1 袋 CP）/ 问答（脂肪、蛋白、电解质、喝水）。数据与计算在 `Shape/shapeRecipe.js`，`shapeRecipe.test.mjs` 校验每天都达到 shapePlan 的目标；图片在 `public/recipe/`，来源登记在 `Shape/recipeCredits.js` |
-| 健康塑形 | Shape/ShapePage | 当前常驻模块（和食谱一起），也是打开网站的首页。最上面是「今天还差多少」：已吃 / 目标 / 还差 + 再吃什么的建议（哪种蛋白吃多少克、配菜、吃完全天各项、会不会超），算法在 `Shape/shapeSuggest.js`（`shapeSuggest.test.mjs`）；接着是「今天吃了 · 练了」。今日四项（热量/蛋白/净碳/步数）达标、能量缺口估算、教练点评、饮食与训练明细、本周 7 天表、体重 7 日均趋势 |
+| 健康塑形 | Shape/ShapePage | 当前常驻模块（和食谱一起），也是打开网站的首页。版式要少字：顶部只有蛋白、热量两个大数字 + 二选一的补法（算法在 `Shape/shapeSuggest.js`）；「今天吃了」每顿一张拼图卡（按 items 文字自动配图、按时间编「第一顿…」，在 `Shape/mealImages.js`）；教练点评、能量缺口、计划要点收在最下面「更多」里。今日四项（热量/蛋白/净碳/步数）达标、能量缺口估算、教练点评、饮食与训练明细、本周 7 天表、体重 7 日均趋势 |
 | 人生看板 | Dashboard/DailyBoard（三大主线卡片）；「生活概览」是 Dashboard/DashboardPage | **核心原则 + 每日落实**(PrincipleCard，principle_logs) + **本周行为契约**(WeeklyActionsCard) + **每日三向**(DailyFocusCard，daily_focus) + 今日概览 + 人生阶段面板(life_stage) + 检查点提醒 |
 | 人生 OKR | OKR/OKRPage | 年度/季度 Objective(okr_objectives) + 拆出的每周行为契约(weekly_actions)。**结果指标只在回顾时看，每日只考核动作做没做**——个人自定 KPI 裁判即运动员，用结果指标每天自评必然放水或弃疗 |
 | 每日一记 | Journal/JournalPage | 快记(AI 提炼后确认入库) + **启示条**(InsightBar，insights 表) + **主线面板**(ThreadsPanel，journal_threads 表) + 心情(1-5)/感恩/心情曲线 + 按天折叠的笔记流 |

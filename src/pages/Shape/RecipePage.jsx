@@ -8,6 +8,7 @@ import { bangkokDay } from '../../lib/dailyActions'
 import { RECIPE_FOODS, RECIPE_TARGETS, WEEK, BASELINE_DAY, PROTEIN_SWAPS, PROTEIN_UNIT, QA, sumItems, dayTotals, dayChecks, eggCount, amountLabel, shoppingList } from './shapeRecipe'
 import { RECIPE_CREDITS, HAS_IMG } from './recipeCredits'
 import { FoodImg } from './FoodImg'
+import { imageName } from './mealImages'
 
 const subtle = { fontSize: 12, color: COLORS.textLight, lineHeight: 1.6 }
 const fmt = n => Number(n).toLocaleString('zh-CN')
@@ -264,7 +265,7 @@ function QATab() {
         <div style={{ ...subtle, marginTop: 6 }}>
           CP 包装为用户提供的照片；其余来自 Wikimedia Commons：
           {credits.map(c => (
-            <div key={c.key}>{RECIPE_FOODS[c.key]?.name}：<a href={c.sourceUrl} target="_blank" rel="noreferrer" style={{ color: COLORS.primaryDark }}>{c.title}</a>，{c.author}，{c.licenseUrl ? <a href={c.licenseUrl} target="_blank" rel="noreferrer" style={{ color: COLORS.primaryDark }}>{c.license}</a> : c.license}</div>
+            <div key={c.key}>{imageName(c.key)}：<a href={c.sourceUrl} target="_blank" rel="noreferrer" style={{ color: COLORS.primaryDark }}>{c.title}</a>，{c.author}，{c.licenseUrl ? <a href={c.licenseUrl} target="_blank" rel="noreferrer" style={{ color: COLORS.primaryDark }}>{c.license}</a> : c.license}</div>
           ))}
         </div>
       </details>

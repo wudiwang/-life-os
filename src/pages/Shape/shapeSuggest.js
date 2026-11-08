@@ -16,11 +16,13 @@ export const LIMITS = {
   cpBags: 4,              // CP 一天 ≤ 4 袋（每袋钠 310mg）
 }
 export const MEAL_MAX_PROTEIN = 60 // 一顿最多按 60g 蛋白建议，剩下的下一顿再补
+export const MAIN_MEAL_PROTEIN = 40 // 热量还不到底线时，正餐至少按 40g 蛋白建议（差得少也吃一顿像样的）
 
 // 补蛋白的候选（按顺序展示，不会超标的排前面）；补热量的加项；蛋白建议吃完热量仍低于底线时加的配菜
 const PROTEIN_OPTIONS = ['chickenBreast', 'beefLean', 'shrimp', 'cp', 'mackerel']
 const KCAL_ADDONS = [[['choySum', 200], ['oliveOil', 10]], [['avocado', 70]], [['almond', 20]], [['pumpkinSeed', 20]]]
-const SIDES = [[['choySum', 200], ['oliveOil', 10]], [['choySum', 200]]] // 先试「菜 + 油」，会超就只加菜
+// 先试「菜 + 油」，会超就只加菜；碳水已经满了就只淋油
+const SIDES = [[['choySum', 200], ['oliveOil', 10]], [['choySum', 200]], [['oliveOil', 15]]]
 
 const r1 = v => Math.round(v * 10) / 10
 const fmt = n => Math.round(n).toLocaleString('zh-CN')
@@ -102,7 +104,7 @@ export function suggest(totals, { cpEaten = 0, mealMax = MEAL_MAX_PROTEIN, L = L
 
   const remP = r1(L.protein - t.p)
   if (remP > 0) {
-    const thisMeal = Math.min(remP, mealMax)
+    const thisMeal = t.kcal < L.kcalFloor && remP < MAIN_MEAL_PROTEIN ? MAIN_MEAL_PROTEIN : Math.min(remP, mealMax)
     const options = PROTEIN_OPTIONS.map(key => {
       const main = [[key, amountFor(key, thisMeal)]]
       let items = main
@@ -122,7 +124,8 @@ export function suggest(totals, { cpEaten = 0, mealMax = MEAL_MAX_PROTEIN, L = L
       const gain = sumItems(main)
       return { key, items, main: label(main), side: side && label(side), gain: { p: gain.p, kcal: gain.kcal }, after: a, warn }
     })
-    const clean = options.filter(o => !o.warn.length)
+    // 不会超标的排前面；其中吃完热量能到底线的再往前
+    const clean = options.filter(o => !o.warn.length).sort((a, b) => (b.after.kcal >= L.kcalFloor) - (a.after.kcal >= L.kcalFloor))
     const shown = [...clean, ...options.filter(o => o.warn.length)].slice(0, Math.max(4, clean.length))
     return {
       status: 'protein', over, need: { p: remP, kcal: Math.max(0, L.kcalFloor - t.kcal) }, options: shown,
