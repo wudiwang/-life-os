@@ -1,0 +1,59 @@
+# 大仙的吃饭提醒，在 GitHub 的服务器上定时跑：Mac 合盖、关机、出门都照常推送。
+# 脚本和 Mac 上的完全一样（scripts/meal-reminder.mjs，不经过 AI）：读今天的饮食记录 → 算还差多少 → 推 TG。
+# 时间是 UTC（曼谷 = UTC+7）。GitHub 定时常有几分钟延迟，所以各提前 5 分钟：
+#   曼谷 09:25 早上 / 12:55 午饭 / 18:25 晚饭 / 21:25 睡前
+# 需要的仓库加密密钥：VITE_SUPABASE_URL、VITE_SUPABASE_ANON_KEY、TELEGRAM_BOT_TOKEN、TG_ALLOWED_CHAT_ID
+# 手动测试：Actions 页面 → 吃饭提醒 → Run workflow（勾 dry 只打印不推送）
+name: 吃饭提醒
+
+on:
+  schedule:
+    - cron: '25 2 * * *'
+    - cron: '55 5 * * *'
+    - cron: '25 11 * * *'
+    - cron: '25 14 * * *'
+  workflow_dispatch:
+    inputs:
+      slot:
+        description: '时段：morning / lunch / dinner / night'
+        required: true
+        default: dinner
+      dry:
+        description: '只打印，不推送'
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+jobs:
+  remind:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: 生成并推送提醒
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TG_ALLOWED_CHAT_ID: ${{ secrets.TG_ALLOWED_CHAT_ID }}
+          SCHEDULE: ${{ github.event.schedule }}
+          INPUT_SLOT: ${{ inputs.slot }}
+          INPUT_DRY: ${{ inputs.dry }}
+        run: |
+          case "$SCHEDULE" in
+            '25 2 * * *')  SLOT=morning ;;
+            '55 5 * * *')  SLOT=lunch ;;
+            '25 11 * * *') SLOT=dinner ;;
+            '25 14 * * *') SLOT=night ;;
+            *)             SLOT="$INPUT_SLOT" ;;
+          esac
+          if [ "$INPUT_DRY" = "true" ]; then
+            node scripts/meal-reminder.mjs --slot "$SLOT" --dry
+          else
+            node scripts/meal-reminder.mjs --slot "$SLOT"
+          fi
