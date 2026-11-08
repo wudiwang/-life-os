@@ -130,27 +130,32 @@ function TopSummary({ totals, food, isToday, mobile, onRecipe }) {
   const pGap = r1(L.protein - p)
   const kcalTone = kcal < L.kcalFloor ? 'short' : kcal <= L.kcalCap ? 'ok' : 'over'
   const kcalNote = kcalTone === 'short' ? `还差 ${fmt(L.kcalFloor - kcal)}` : kcalTone === 'ok' ? '✓ 刚好' : `超了 ${fmt(kcal - L.kcalCap)}`
+  const f = totals.fat || 0
+  const fatTone = f < L.fatMin ? 'short' : f <= L.fat ? 'ok' : 'over'
+  const fatNote = fatTone === 'short' ? `还差 ${fmt(L.fatMin - f)}g` : fatTone === 'ok' ? '✓ 在范围内' : `超了 ${fmt(f - L.fat)}g`
   return (
     <Card style={{ border: `1.5px solid ${COLORS.primary}` }}>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: mobile ? 12 : 24 }}>
-        <BigStat label="蛋白" value={fmt(p)} unit={`/ ${L.protein}g`} pct={p / L.protein} note={pGap > 0 ? `还差 ${pGap}g` : '✓ 够了'} tone={pGap > 0 ? 'short' : 'ok'} />
-        <BigStat label="热量" value={fmt(kcal)} unit={`/ ${fmt(L.kcalFloor)}–${fmt(L.kcalCap)}`} pct={kcal / L.kcalCap} note={kcalNote} tone={kcalTone} />
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: mobile ? 8 : 24 }}>
+        <BigStat mobile={mobile} label="蛋白" value={fmt(p)} unit={`/ ${L.protein}g`} pct={p / L.protein} note={pGap > 0 ? `还差 ${pGap}g` : '✓ 够了'} tone={pGap > 0 ? 'short' : 'ok'} />
+        <BigStat mobile={mobile} label="热量" value={fmt(kcal)} unit={mobile ? '' : `/ ${fmt(L.kcalFloor)}–${fmt(L.kcalCap)}`} pct={kcal / L.kcalCap} note={kcalNote} tone={kcalTone} />
+        <BigStat mobile={mobile} label="脂肪" value={fmt(f)} unit={`/ ${L.fatMin}–${L.fat}g`} pct={f / L.fat} note={fatNote} tone={fatTone} />
       </div>
+      {mobile && <div style={{ ...subtle, marginTop: 4 }}>热量目标 {fmt(L.kcalFloor)}–{fmt(L.kcalCap)} kcal</div>}
       <Caps totals={totals} />
       {isToday && <Advice totals={totals} food={food} mobile={mobile} onRecipe={onRecipe} />}
     </Card>
   )
 }
 
-function BigStat({ label, value, unit, pct, note, tone }) {
+function BigStat({ label, value, unit, pct, note, tone, mobile }) {
   return (
     <div style={{ minWidth: 0 }}>
       <div style={subtle}>{label}</div>
-      <div style={{ whiteSpace: 'nowrap' }}><span style={{ fontSize: 30, fontWeight: 700 }}>{value}</span><span style={{ fontSize: 12, color: COLORS.textLight }}> {unit}</span></div>
+      <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}><span style={{ fontSize: mobile ? 22 : 30, fontWeight: 700 }}>{value}</span>{unit && <span style={{ fontSize: mobile ? 11 : 12, color: COLORS.textLight }}> {unit}</span>}</div>
       <div style={{ height: 6, background: COLORS.bg, borderRadius: 3, overflow: 'hidden', margin: '4px 0' }}>
         <div style={{ width: `${Math.min(100, Math.max(0, pct * 100))}%`, height: '100%', background: TONE[tone], borderRadius: 3 }} />
       </div>
-      <div style={{ fontSize: 14, fontWeight: 700, color: TONE[tone] }}>{note}</div>
+      <div style={{ fontSize: mobile ? 13 : 14, fontWeight: 700, color: TONE[tone] }}>{note}</div>
     </div>
   )
 }
@@ -158,7 +163,7 @@ function BigStat({ label, value, unit, pct, note, tone }) {
 // 脂肪 / 饱和脂肪 / 净碳：一行小字，超了标红，快到上限标橙
 function Caps({ totals }) {
   const L = LIMITS
-  const items = [['脂肪', totals.fat, L.fat], ['饱和', totals.satFat, L.satFat], ['净碳', totals.netCarb, L.netCarb]]
+  const items = [['饱和脂肪', totals.satFat, L.satFat], ['净碳', totals.netCarb, L.netCarb]]
   return (
     <div style={{ ...subtle, marginTop: 10, display: 'flex', flexWrap: 'wrap', gap: '2px 14px' }}>
       {items.map(([label, v, cap]) => {
@@ -186,7 +191,7 @@ function Advice({ totals, food, mobile, onRecipe }) {
             <FoodImg k={o.key} size={44} />
             <div style={{ minWidth: 0 }}>
               <div style={{ fontWeight: 600, fontSize: 14 }}>{o.main}{o.side ? ` + ${o.side}` : ''}</div>
-              <div style={subtle}>吃完 {fmt(o.after.kcal)} kcal · 蛋白 {fmt(o.after.p)}g</div>
+              <div style={subtle}>吃完 {fmt(o.after.kcal)} kcal · 蛋白 {fmt(o.after.p)}g · 脂肪 {fmt(o.after.f)}g</div>
               {o.warn[0] && <div style={{ fontSize: 12, color: COLORS.red }}>⚠ {o.warn[0]}</div>}
             </div>
           </div>

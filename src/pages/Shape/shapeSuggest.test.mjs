@@ -11,8 +11,9 @@ test('rows show eaten / target / gap, fat is a cap not a goal', () => {
   assert.equal(rows.protein.status, 'short')
   assert.equal(rows.kcal.gap, '还差 387')
   assert.equal(rows.kcal.sub, '最多还能吃 787')
-  assert.equal(rows.fat.status, 'room')
-  assert.equal(rows.fat.gap, '还剩 49g 额度')
+  assert.equal(rows.fat.status, 'short')          // 71g < 80g 下限
+  assert.equal(rows.fat.gap, '还差 9g')
+  assert.equal(rows.fat.sub, '最多还能吃 49g')
   assert.equal(rows.satFat.gap, '还剩 5g 额度')
   assert.equal(rows.steps.status, 'none')
 })

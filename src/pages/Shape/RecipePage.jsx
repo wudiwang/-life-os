@@ -59,7 +59,7 @@ function TargetBar({ mobile }) {
     ['热量', '约 1,800', 'kcal'],
     ['蛋白', `≥ ${T.protein}`, 'g'],
     ['净碳水', `≤ ${T.netCarb}`, 'g'],
-    ['脂肪（上限）', `≤ ${T.fat}`, 'g'],
+    ['脂肪', `${T.fatMin}–${T.fat}`, 'g'],
     ['饱和脂肪', `≤ ${T.satFat}`, 'g'],
     ['喝水', '3–3.5', 'L'],
   ]
@@ -161,7 +161,7 @@ function DayView({ day, mobile }) {
     ['热量', `${fmt(s.kcal)}`, 'kcal', c.kcal],
     ['蛋白', `${Math.round(s.p)}`, `/ ≥${T.protein}g`, c.protein],
     ['净碳', `${s.c}`, `/ ≤${T.netCarb}g`, c.netCarb],
-    ['脂肪', `${Math.round(s.f)}`, `/ ≤${T.fat}g`, c.fat],
+    ['脂肪', `${Math.round(s.f)}`, `/ ${T.fatMin}–${T.fat}g`, c.fat],
     ['饱和脂肪', `${s.sfa}`, `/ ≤${T.satFat}g`, c.satFat],
     ['全蛋', `${eggs}`, `/ ≤${T.eggsMax} 个`, c.eggs],
   ]

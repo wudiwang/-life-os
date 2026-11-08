@@ -15,13 +15,15 @@ test('slot is picked from the clock when run by hand', () => {
 test('dinner reminder: what was eaten, what is missing, two concrete options, supplements', () => {
   const msg = buildReminder({ slot: 'dinner', today: TODAY, weekday: 7, now: '18:30' })
   assert.match(msg, /^🍽 晚饭提醒 · 18:30/)
-  assert.match(msg, /今天已吃：1,248 kcal · 蛋白 136g/)
+  assert.match(msg, /今天已吃：1,248 kcal · 蛋白 136g · 脂肪 62g/)
+  assert.match(msg, /脂肪还差 18g（目标 80–120g）/)
+  assert.match(msg, /吃完 .+ · 脂肪 \d+g/)
   assert.match(msg, /还差：蛋白 14g · 热量离 1,500 差 252/)
   assert.match(msg, /净碳已经超了/)
   assert.match(msg, /1\. .+\n/)
   assert.match(msg, /2\. /)
   assert.match(msg, /鱼油 1 粒（今天没吃鱼）/)
-  assert.ok(msg.split('\n').length <= 12, '手机一屏读完')
+  assert.ok(msg.split('\n').length <= 13, '手机一屏读完')
 })
 
 test('morning reminder shows yesterday and the baseline breakfast when nothing is logged yet', () => {

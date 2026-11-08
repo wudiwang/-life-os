@@ -35,7 +35,7 @@ export function supplementsFor(slot, weekday, fish) {
 
 function optionLine(o, i) {
   const main = `${i + 1}. ${o.main}${o.side ? ` + ${o.side}` : ''}`
-  return `${main}（吃完 ${fmt(o.after.kcal)} kcal · 蛋白 ${fmt(o.after.p)}g）${o.warn[0] ? `\n   ⚠ ${o.warn[0]}` : ''}`
+  return `${main}（吃完 ${fmt(o.after.kcal)} kcal · 蛋白 ${fmt(o.after.p)}g · 脂肪 ${fmt(o.after.f)}g）${o.warn[0] ? `\n   ⚠ ${o.warn[0]}` : ''}`
 }
 
 export function buildReminder({ slot, today, yesterday = [], weekday, now = SLOTS[slot].time }) {
@@ -45,7 +45,7 @@ export function buildReminder({ slot, today, yesterday = [], weekday, now = SLOT
   if (slot === 'morning' && yesterday.length) {
     const y = sumFood(yesterday)
     const pGap = LIMITS.protein - y.protein
-    lines.push(`昨天：${fmt(y.kcal)} kcal · 蛋白 ${fmt(y.protein)}g${pGap > 0 ? `（差 ${fmt(pGap)}g）` : ' ✓'}`)
+    lines.push(`昨天：${fmt(y.kcal)} kcal · 蛋白 ${fmt(y.protein)}g${pGap > 0 ? `（差 ${fmt(pGap)}g）` : ' ✓'} · 脂肪 ${fmt(y.fat)}g`)
   }
 
   if (!today.length) {
@@ -53,7 +53,8 @@ export function buildReminder({ slot, today, yesterday = [], weekday, now = SLOT
     else if (slot === 'night') lines.push('今天还没有饮食记录。吃了的话回我一句补上；22:00 前吃完，之后不再吃。')
     else lines.push('今天还没有饮食记录。照基线：CP 3 袋 + 西兰花 150g + 橄榄油 15g（蛋白约 60g）。吃完回我一句。')
   } else {
-    lines.push(`今天已吃：${fmt(t.kcal)} kcal · 蛋白 ${fmt(t.protein)}g`)
+    lines.push(`今天已吃：${fmt(t.kcal)} kcal · 蛋白 ${fmt(t.protein)}g · 脂肪 ${fmt(t.fat)}g`)
+    if (t.fat < LIMITS.fatMin) lines.push(`🥑 脂肪还差 ${fmt(LIMITS.fatMin - t.fat)}g（目标 ${LIMITS.fatMin}–${LIMITS.fat}g）：这顿带上橄榄油 / 牛油果 / 肥鱼，别吃成高蛋白低热量`)
     const s = suggest(t, { cpEaten: cpBagsEaten(today) })
     if (s.status === 'done') lines.push(slot === 'night' ? '✅ 今天都到位了，睡前别再加餐。' : '✅ 蛋白、热量都到了，今天不用再吃。')
     else if (s.status === 'over') lines.push(`⚠ ${s.over.join('、')}超了，今天别再加。`)

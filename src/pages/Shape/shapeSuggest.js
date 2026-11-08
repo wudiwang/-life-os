@@ -10,6 +10,7 @@ export const LIMITS = {
   kcalFloor: d.kcalFloor, // 底线
   kcalCap: d.kcal,        // 上限参考
   fat: d.fat,             // 上限
+  fatMin: d.fatMin,       // 下限
   satFat: d.satFat,       // 上限
   netCarb: d.netCarb,     // 上限
   steps: d.steps,         // 下限
@@ -52,7 +53,11 @@ export function remainingRows(totals, steps, L = LIMITS) {
       : t.kcal <= L.kcalCap
         ? { key: 'kcal', label: '热量', eaten: fmt(t.kcal), target: `${fmt(L.kcalFloor)}–${fmt(L.kcalCap)}`, gap: '✓ 在范围内', sub: `还能吃 ${fmt(L.kcalCap - t.kcal)}`, status: 'ok' }
         : { key: 'kcal', label: '热量', eaten: fmt(t.kcal), target: `${fmt(L.kcalFloor)}–${fmt(L.kcalCap)}`, gap: `超了 ${fmt(t.kcal - L.kcalCap)}`, status: 'over' },
-    { ...capRow('fat', '脂肪', t.f, L.fat, 'g', '（上限）'), ...(t.f <= L.fat ? { sub: '不用特意补' } : {}) },
+    t.f > L.fat
+      ? { key: 'fat', label: '脂肪', eaten: `${r1(t.f)}g`, target: `${L.fatMin}–${L.fat}g`, gap: `超了 ${r1(t.f - L.fat)}g`, status: 'over' }
+      : t.f < L.fatMin
+        ? { key: 'fat', label: '脂肪', eaten: `${r1(t.f)}g`, target: `${L.fatMin}–${L.fat}g`, gap: `还差 ${r1(L.fatMin - t.f)}g`, sub: `最多还能吃 ${r1(L.fat - t.f)}g`, status: 'short' }
+        : { key: 'fat', label: '脂肪', eaten: `${r1(t.f)}g`, target: `${L.fatMin}–${L.fat}g`, gap: '✓ 在范围内', sub: `还能吃 ${r1(L.fat - t.f)}g`, status: 'ok' },
     t.sfaKnown ? capRow('satFat', '饱和脂肪', t.sfa, L.satFat, 'g') : { key: 'satFat', label: '饱和脂肪', eaten: '未估', target: `≤ ${L.satFat}g`, gap: '—', status: 'none' },
     capRow('netCarb', '净碳', t.c, L.netCarb, 'g'),
     steps == null
