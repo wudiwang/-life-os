@@ -90,6 +90,12 @@ function newOvers(t, a, L) {
   return w
 }
 
+// 已经超了的项，配菜不能再往上加（比如碳水已满，就不再配菜心）
+function worsensOver(t, items, L) {
+  const g = sumItems(items)
+  return (t.c > L.netCarb && g.c > 0.5) || (t.sfa > L.satFat && g.sfa > 0.5) || (t.f > L.fat && g.f > 0.5)
+}
+
 const label = items => items.map(([k, g]) => `${RECIPE_FOODS[k].name} ${amountLabel(k, g)}`).join(' + ')
 
 // 主函数。status：empty 还没记录 / protein 蛋白不够 / kcal 蛋白够了热量不够 / done 全部达标 / over 已经超了
@@ -113,7 +119,7 @@ export function suggest(totals, { cpEaten = 0, mealMax = MEAL_MAX_PROTEIN, L = L
       if (a.kcal < L.kcalFloor) {
         for (const s of SIDES) {
           const a2 = after(t, [...main, ...s])
-          if (!newOvers(t, a2, L).length) { items = [...main, ...s]; a = a2; side = s; break }
+          if (!newOvers(t, a2, L).length && !worsensOver(t, s, L)) { items = [...main, ...s]; a = a2; side = s; break }
         }
       }
       const warn = newOvers(t, a, L)
