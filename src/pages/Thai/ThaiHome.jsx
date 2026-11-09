@@ -4,10 +4,11 @@ import { fmtDateTime } from '../../lib/date'
 import { ALL_KEYS, LINE_KEYS, SENTENCE_VOCAB, STUDY_DAYS, WORD_BANK, WORD_KEYS, createRng, dayMastery, isWeak, keysForDays, newWordsOn, reviewQuestions } from './thaiStudy'
 import { AudioButton, Chip, MasteryToggle, ProgressBar, ProgressRing, TokenLine, ui } from './ThaiParts'
 import { ThaiQuiz } from './ThaiQuiz'
+import { ThaiLife } from './ThaiLife'
 import { THAI_TOPICS } from './thaiTopics'
 
 const GROUPS = ['先能开口', '吃饭喝东西', '日常购物', '出门办事', '天气与求助', '扩展表达']
-const TABS = [['course', '📚 课程'], ['words', '🔤 单词本'], ['review', '🧠 复习']]
+const TABS = [['course', '📚 课程'], ['words', '🔤 单词本'], ['review', '🧠 复习'], ['life', '🎧 生活']]
 
 export function ThaiHome(props) {
   const { tab, mobile, mastered, practicedDays, resumeDay, statusSlot } = props
@@ -36,7 +37,7 @@ export function ThaiHome(props) {
     {statusSlot}
     <nav role="tablist" style={{ display: 'flex', gap: 6, margin: '16px 0 12px' }}>
       {TABS.map(([key, label]) => <a key={key} role="tab" aria-selected={tab === key} href={key === 'course' ? '#thai' : `#thai-tab=${key}`}
-        style={{ flex: 1, textAlign: 'center', padding: '10px 0', borderRadius: 10, textDecoration: 'none', fontSize: 14, fontWeight: 600,
+        style={{ flex: 1, textAlign: 'center', padding: '10px 0', borderRadius: 10, textDecoration: 'none', fontSize: mobile ? 13 : 14, fontWeight: 600, whiteSpace: 'nowrap',
           background: tab === key ? COLORS.primaryDark : '#fff', color: tab === key ? '#fff' : COLORS.text, border: `1px solid ${tab === key ? COLORS.primaryDark : COLORS.border}` }}>
         {label}
       </a>)}
@@ -44,6 +45,7 @@ export function ThaiHome(props) {
     {tab === 'course' && <CourseTab {...props} />}
     {tab === 'words' && <WordsTab {...props} />}
     {tab === 'review' && <ReviewTab {...props} />}
+    {tab === 'life' && <ThaiLife {...props} />}
   </>
 }
 

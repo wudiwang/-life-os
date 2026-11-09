@@ -223,7 +223,7 @@ export const ALL_TABLES = [
   'journal_threads', 'insights',
   'okr_objectives', 'weekly_actions', 'weekly_action_logs', 'principle_logs',
   'trade_patterns', 'trade_pattern_updates',
-  'thai_learning_progress', 'thai_item_progress', 'thai_quiz_results',
+  'thai_learning_progress', 'thai_item_progress', 'thai_quiz_results', 'thai_life_phrases',
   'shape_food_logs', 'shape_workouts', 'shape_daily',
 ]
 

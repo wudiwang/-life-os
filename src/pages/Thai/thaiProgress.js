@@ -26,7 +26,7 @@ export function practiceRow(day, now = new Date()) {
   return { course_version: THAI_COURSE_VERSION, lesson_day: day, practiced_at: now.toISOString(), practiced_on: bangkokDay(now) }
 }
 
-const THAI_TABS = ['course', 'words', 'review']
+const THAI_TABS = ['course', 'words', 'review', 'life']
 export function parseThaiTab(hash) {
   const value = new URLSearchParams(String(hash).replace(/^#/, '')).get('thai-tab')
   return THAI_TABS.includes(value) ? value : 'course'

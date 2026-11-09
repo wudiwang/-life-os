@@ -39,7 +39,7 @@ git push origin main → Vercel 自动构建发布（约1-2分钟）
 | 交易形态库 | TradePatterns/TradePatternsPage | 交易项目 `research/ideas` 的云端镜像：原图/原话、事实、规律、待定项、研究时间线；网页新增进入待写回队列 |
 | 健康 | Health/HealthPage | 4 tabs：体成分(BodyTab)/血液检查(BloodTab)/指标记录/体检报告；指标定义在 constants 的 METRIC_TYPES、BODY_METRICS、BLOOD_PANEL |
 | 一周食谱 | MealPlan/MealPlanPage | 定量版健康生酮周食谱：每样食材给克数，营养按 `FOODS` 每100g 值自动汇总（每餐/全天/周均/采购清单），每天一道空气炸锅菜；PC 七日网格/移动端按天切换。数据 `lib/ketoPlan.js`，与大图 `public/keto-week.png` 同源；改数据后跑 `node scripts/render-keto-poster.mjs` 重出图 |
-| 泰语学习 | Thai/ThaiPage | 30 天口语课：页面**不显示泰文**，只显示读音 + 逐词对齐的中文（`thaiGloss.js`，叠加在 `thaiLessons.js` 上，后者的泰文只用于音频，改它要重跑 `generate-thai-audio.py`）。每课：表情场景卡/认词/句式/对话/作业；逐项「掌握」标记(thai_item_progress，key 按读音去重，答错自动取消掌握)；作业与复习成绩(thai_quiz_results)；首页三 tab：课程(30 天掌握地图)/单词本(每日新词统计)/复习(按天数范围出题，错题优先)。出题逻辑纯函数在 `thaiStudy.js`。另有**专题**(thaiTopics.js + ThaiTopicView，`#thai-topic=travel`，课程 tab 里入口)：按场景的词汇/句式/对话速查 |
+| 泰语学习 | Thai/ThaiPage | 30 天口语课：页面**不显示泰文**，只显示读音 + 逐词对齐的中文（`thaiGloss.js`，叠加在 `thaiLessons.js` 上，后者的泰文只用于音频，改它要重跑 `generate-thai-audio.py`）。每课：表情场景卡/认词/句式/对话/作业；逐项「掌握」标记(thai_item_progress，key 按读音去重，答错自动取消掌握)；作业与复习成绩(thai_quiz_results)；首页三 tab：课程(30 天掌握地图)/单词本(每日新词统计)/复习(按天数范围出题，错题优先)。出题逻辑纯函数在 `thaiStudy.js`。另有**专题**(thaiTopics.js + ThaiTopicView，`#thai-topic=travel`，课程 tab 里入口)：按场景的词汇/句式/对话速查；第四个 tab「🎧 生活」(`#thai-tab=life`)是随身录音里整理出的生活泰语(thai_life_phrases，见「随身录音」一节) |
 | 习惯 | Habits/HabitsPage | 7天打卡网格 + streak；habit_logs 以 (habit_id, log_date) 判打卡 |
 | 目标 | Goals/GoalsPage | 目标卡片 + 详情弹窗(里程碑/检查点自检/过程记录/复盘) |
 | 工作 | Work/WorkPage | 4 tabs：待办/日志/职责档案(work_profile.field)/人际地图 |
@@ -51,22 +51,27 @@ git push origin main → Vercel 自动构建发布（约1-2分钟）
 
 新增页面需要：写页面组件 + 在 `src/pages/registry.js` 登记 + `src/lib/constants.js` 的 NAV_ITEMS 加菜单项。
 
-## 手表录音整理（scripts/voice-memos.mjs）
+## 随身录音 → 每日一记 + 生活泰语（scripts/voice-memos.mjs）
 
-Apple Watch「语音备忘录」录一段（对话/会议/自言自语）→ iCloud 同步到 Mac → 本机 whisper 转文字（录音不出本机）→ 本机 Claude 总结 → 摘要一行进「每日一记」（`[HH:MM] 🎙️ 录音 N 分钟 · 标题｜摘要｜要点｜待办｜启示`，页面按行拆条，所以必须一行）→ TG 推一条。
+用途：戴着手表 / 手机放兜里，用「语音备忘录」录一段甚至一整天，主要为了**学泰语**（把真实生活里听到的泰语变成学习材料）。iCloud 同步到 Mac 后全自动：
 
 ```
 语音备忘录文件夹 ~/Library/Group Containers/group.com.apple.VoiceMemos.shared/Recordings（TCC 保护）
   → launchd com.lifeos.voice-copy：/usr/bin/rsync -a 镜像到 ~/Projects/life-os-voice/.mirror（目录变化即跑 + 每 5 分钟兜底）
   → launchd com.lifeos.voice：镜像有变化就跑 voice-memos.mjs（+ 每 15 分钟兜底重试）
-  → afconvert 转 16kHz wav → whisper-cli（large-v3-turbo-q5_0 + silero VAD，Metal，约 10 倍速）
-  → 本机大脑总结成 JSON → 全文 .md 存 ~/Projects/life-os-voice/<年-月>/ → journal_entries 追加一行 → TG
+  → afconvert 转 16kHz wav → whisper-vad-speech-segments（silero）切出说话段 → groupSpeech 并成 ≤20 秒的块
+  → whisper-server（large-v3-turbo-q5_0，模型只加载一次）逐块识别，**每块各自判断语种**（一天里中/泰/英混着）
+  → Claude ① 摘要 → journal_entries 追加一行（`[HH:MM] 🎙️ 录音 N 分钟 · 标题｜摘要｜要点｜待办｜启示｜生活泰语 N 句`，页面按行拆条，必须一行）
+  → Claude ② 从泰语句子（带编号和前后中文上下文）挑「生活泰语」+「当时想说没说出来的」→ thai_life_phrases（v20）
+  → 全文 .md 存 ~/Projects/life-os-voice/<年-月>/；TG 推摘要 + 生活泰语清单 + 这些句子的**真人原声片段**（sendMediaGroup，同一段原声只发一次）
 ```
 
-- **隐私**：数据库公开可读，只有标题/摘要/要点/待办进日记；转写全文只在本机 .md（项目外，不进 git）。提示词要求 AI 不写入密码、账号、证件号等。
-- **一次性准备**：`brew install whisper-cpp`；模型放 `~/.cache/life-os-whisper/`（`ggml-large-v3-turbo-q5_0.bin` 来自 huggingface `ggerganov/whisper.cpp`，`ggml-silero-v5.1.2.bin` 来自 `ggml-org/whisper-vad`）；系统设置 → 隐私与安全性 → 完全磁盘访问权限 → 加 `/usr/bin/rsync`（只给这一个程序开读权限，node/大仙不需要）；iPhone 和 Mac 的 iCloud 里打开「语音备忘录」同步。
-- 进度在 `~/Projects/life-os-voice/.state.json`：首次运行只整理当天及以后的录音；`npm run voice -- --since 2026-11-01` 补旧的；`npm run voice -- --status` 看待整理；`npm run voice -- --dry 某.m4a` 只打印不写；直接 `npm run voice -- 某.m4a` 整理任意音频。AI 失败会在下一轮重试，连续 3 次失败就存原文开头保底。
-- 纯函数在 `voice-memos-core.mjs`（`npm run test:voice`），whisper 的「点赞订阅/字幕由…」类脑补句在 `HALLUCINATION` 里过滤。日志 `~/Library/Logs/life-os/voice.log`。
+- **隐私**：数据库公开可读，上网的只有摘要一行和学习用的泰语句子（提示词要求不收人名电话地址、不写密码账号）；转写全文、原声片段只在本机和 TG 私聊。
+- 泰语页「🎧 生活」tab（`Thai/ThaiLife.jsx`，纯函数 `lifePhrases.js`）：按天列句子，读音 + 逐词中文（不显示泰文，和课程一致），🔊/🐢 用设备自带泰语语音朗读（没有 Kanya 会提示去下载），掌握标记复用 `thai_item_progress`，key 为 `life:<读音>`。读音写法由提示词约束为课程同款（`ROMAN_READING_GUIDE` + `GLOSS_DEFAULTS` 示例），gloss 读音拼不上整句时以 gloss 为准。
+- **一次性准备**：`brew install whisper-cpp`；模型放 `~/.cache/life-os-whisper/`（`ggml-large-v3-turbo-q5_0.bin` 来自 huggingface `ggerganov/whisper.cpp`，`ggml-silero-v5.1.2.bin` 来自 `ggml-org/whisper-vad`）；系统设置 → 隐私与安全性 → 完全磁盘访问权限 → 加 `/usr/bin/rsync`（只给这一个程序开读权限）；iPhone 和 Mac 的 iCloud 里打开「语音备忘录」同步。
+- 速度：识别约 1 秒/块，全天录音（几百到上千块）要十几到几十分钟，后台跑完再推。转写结果缓存在 `~/Projects/life-os-voice/.cache/`，AI 失败重试不用重转；连续 3 次失败就存原文开头保底。
+- 进度在 `~/Projects/life-os-voice/.state.json`：首次运行只整理当天及以后的录音；`npm run voice -- --since 2026-11-01` 补旧的；`--status` 看待整理；`--dry 某.m4a` 只打印不写；直接 `npm run voice -- 某.m4a` 整理任意音频。
+- 纯函数在 `voice-memos-core.mjs`（`npm run test:voice`），whisper 的中/泰/英「点赞订阅 / ขอบคุณที่รับชม」类脑补句在 `HALLUCINATION` 里过滤。日志 `~/Library/Logs/life-os/voice.log`。
 
 ## 交易形态库双向同步
 
