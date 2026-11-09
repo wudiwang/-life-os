@@ -24,7 +24,7 @@ git push origin main → Vercel 自动构建发布（约1-2分钟）
 - 侧栏只常驻 `constants.PRIMARY_NAV`（现为 `['shape', 'recipe']`），其余 16 个模块折叠在「更多模块」里，功能和数据都在，只是不打扰。要恢复某个模块常驻，把它的 key 加进 `PRIMARY_NAV`。默认首页也是 `shape`（useUIStore / App.jsx 兜底）。
 - 页面 `Shape/ShapePage` **只做呈现**；纯计算在 `Shape/shapeCalc.js`（`npm run test:shape`），目标数字在 `Shape/shapePlan.js`，与 `docs/健康塑形计划.md` 同步修改。
 - 数据表 `shape_food_logs` / `shape_workouts` / `shape_daily`（`supabase/v18_shape.sql`；v19 给饮食表加了 `sodium_mg / potassium_mg / magnesium_mg`）。**录入只走聊天**：大仙按 `docs/塑形数据录入总则.md` 估算热量、运动消耗并写库，再写当天 `shape_daily.coach_note`。
-- **大仙吃饭提醒（2026-11-08 起唯一的定时任务）**：`scripts/meal-reminder.mjs`（文案纯函数 `meal-reminder-core.mjs`，和首页同一套 shapeSuggest 算法，不经过 AI），launchd 每天 09:30 / 13:00 / 18:30 / 21:30 推 TG：今天吃了多少、还差多少、二选一吃法、这个时段该吃的补剂。用户要求其他定时任务全部暂停：Mac 上按 `bash scripts/install-launchd.sh --no-brief --no-sync` 安装（大仙常驻 + 吃饭提醒）；要恢复早晚简报 / 每晚同步，去掉对应的 `--no-xxx` 重装即可。手动试跑：`npm run remind -- --slot dinner --dry`。
+- **大仙吃饭提醒（2026-11-08 起唯一的定时任务）**：`scripts/meal-reminder.mjs`（文案纯函数 `meal-reminder-core.mjs`，和首页同一套 shapeSuggest 算法，不经过 AI），launchd 每天 09:30 / 13:00 / 18:30 / 21:30 推 TG：今天吃了多少、还差多少、二选一吃法、这个时段该吃的补剂。用户要求其他定时任务全部暂停：Mac 上按 `bash scripts/install-launchd.sh --no-brief --no-sync` 安装（大仙常驻 + 吃饭提醒 + 手表录音整理）；要恢复早晚简报 / 每晚同步，去掉对应的 `--no-xxx` 重装即可。手动试跑：`npm run remind -- --slot dinner --dry`。
 - 大仙收照片：`tg-bot.mjs` 下载到 `scripts/.tg-photos/`（gitignore），相册合并成一次（`tg-photo.mjs`），把本机路径交给本机大脑用 Read 看图。
 
 ## 模块地图（src/pages/ + registry.js 登记）
@@ -50,6 +50,23 @@ git push origin main → Vercel 自动构建发布（约1-2分钟）
 | 设置 | Settings/SettingsPage | 连接状态/JSON 备份导出/清空演示数据 |
 
 新增页面需要：写页面组件 + 在 `src/pages/registry.js` 登记 + `src/lib/constants.js` 的 NAV_ITEMS 加菜单项。
+
+## 手表录音整理（scripts/voice-memos.mjs）
+
+Apple Watch「语音备忘录」录一段（对话/会议/自言自语）→ iCloud 同步到 Mac → 本机 whisper 转文字（录音不出本机）→ 本机 Claude 总结 → 摘要一行进「每日一记」（`[HH:MM] 🎙️ 录音 N 分钟 · 标题｜摘要｜要点｜待办｜启示`，页面按行拆条，所以必须一行）→ TG 推一条。
+
+```
+语音备忘录文件夹 ~/Library/Group Containers/group.com.apple.VoiceMemos.shared/Recordings（TCC 保护）
+  → launchd com.lifeos.voice-copy：/usr/bin/rsync -a 镜像到 ~/Projects/life-os-voice/.mirror（目录变化即跑 + 每 5 分钟兜底）
+  → launchd com.lifeos.voice：镜像有变化就跑 voice-memos.mjs（+ 每 15 分钟兜底重试）
+  → afconvert 转 16kHz wav → whisper-cli（large-v3-turbo-q5_0 + silero VAD，Metal，约 10 倍速）
+  → 本机大脑总结成 JSON → 全文 .md 存 ~/Projects/life-os-voice/<年-月>/ → journal_entries 追加一行 → TG
+```
+
+- **隐私**：数据库公开可读，只有标题/摘要/要点/待办进日记；转写全文只在本机 .md（项目外，不进 git）。提示词要求 AI 不写入密码、账号、证件号等。
+- **一次性准备**：`brew install whisper-cpp`；模型放 `~/.cache/life-os-whisper/`（`ggml-large-v3-turbo-q5_0.bin` 来自 huggingface `ggerganov/whisper.cpp`，`ggml-silero-v5.1.2.bin` 来自 `ggml-org/whisper-vad`）；系统设置 → 隐私与安全性 → 完全磁盘访问权限 → 加 `/usr/bin/rsync`（只给这一个程序开读权限，node/大仙不需要）；iPhone 和 Mac 的 iCloud 里打开「语音备忘录」同步。
+- 进度在 `~/Projects/life-os-voice/.state.json`：首次运行只整理当天及以后的录音；`npm run voice -- --since 2026-11-01` 补旧的；`npm run voice -- --status` 看待整理；`npm run voice -- --dry 某.m4a` 只打印不写；直接 `npm run voice -- 某.m4a` 整理任意音频。AI 失败会在下一轮重试，连续 3 次失败就存原文开头保底。
+- 纯函数在 `voice-memos-core.mjs`（`npm run test:voice`），whisper 的「点赞订阅/字幕由…」类脑补句在 `HALLUCINATION` 里过滤。日志 `~/Library/Logs/life-os/voice.log`。
 
 ## 交易形态库双向同步
 

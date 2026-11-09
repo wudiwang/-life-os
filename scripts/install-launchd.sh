@@ -4,12 +4,13 @@
 # （claude CLI 要用登录用户的订阅凭据，所以不用系统级 LaunchDaemon）。
 #
 # 用法：
-#   bash scripts/install-launchd.sh                      # 全部安装：大仙常驻 + 吃饭提醒 + 早晚简报 + 每晚项目同步
-#   bash scripts/install-launchd.sh --no-brief --no-sync # 现行配置（2026-11-08 起）：只留大仙 + 吃饭提醒
+#   bash scripts/install-launchd.sh                      # 全部安装：大仙常驻 + 吃饭提醒 + 手表录音整理 + 早晚简报 + 每晚项目同步
+#   bash scripts/install-launchd.sh --no-brief --no-sync # 现行配置：大仙 + 吃饭提醒 + 手表录音整理
 #   bash scripts/install-launchd.sh --meals 09:30,13:00,18:30,21:30   # 吃饭提醒的 4 个时间（早/午/晚/睡前）
 #   bash scripts/install-launchd.sh --morning 08:00 --evening 22:00 --sync-at 21:30
 #   bash scripts/install-launchd.sh --no-bot             # 只装定时任务，不装大仙常驻
 #   bash scripts/install-launchd.sh --no-meals           # 不装吃饭提醒
+#   bash scripts/install-launchd.sh --no-voice           # 不装手表录音整理
 #   bash scripts/install-launchd.sh --status             # 查看各任务状态
 #   bash scripts/install-launchd.sh --uninstall          # 全部移除
 #
@@ -18,7 +19,9 @@
 # 行为说明：
 #   - 大仙：登录即启动，进程退出（非正常）自动拉起；bot-forever 自带单实例锁。
 #   - 定时任务：到点 Mac 在睡眠，launchd 会在唤醒后补跑一次；关机期间错过的不补。
-#   - 日志：~/Library/Logs/life-os/{bot,meal,brief,sync}.log
+#   - 手表录音：com.lifeos.voice-copy 用 /usr/bin/rsync 把「语音备忘录」镜像到 ~/Projects/life-os-voice/.mirror
+#     （那个文件夹受系统保护，要给 /usr/bin/rsync 开「完全磁盘访问权限」），com.lifeos.voice 发现新录音就整理。
+#   - 日志：~/Library/Logs/life-os/{bot,meal,brief,sync,voice}.log
 #   - 每次安装都会先卸掉全部任务再按参数装，所以「暂停」某项 = 带上对应的 --no-xxx 重装一次。
 
 set -euo pipefail
@@ -31,6 +34,7 @@ WITH_BOT=1
 WITH_BRIEF=1
 WITH_SYNC=1
 WITH_MEALS=1
+WITH_VOICE=1
 ACTION='install'
 
 while [ $# -gt 0 ]; do
@@ -43,9 +47,10 @@ while [ $# -gt 0 ]; do
     --no-brief) WITH_BRIEF=0; shift ;;
     --no-sync) WITH_SYNC=0; shift ;;
     --no-meals) WITH_MEALS=0; shift ;;
+    --no-voice) WITH_VOICE=0; shift ;;
     --uninstall) ACTION='uninstall'; shift ;;
     --status) ACTION='status'; shift ;;
-    -h|--help) sed -n '2,24p' "$0"; exit 0 ;;
+    -h|--help) sed -n '2,27p' "$0"; exit 0 ;;
     *) echo "✗ 未知参数：$1（--help 查看用法）"; exit 1 ;;
   esac
 done
@@ -62,7 +67,12 @@ LABEL_SYNC='com.lifeos.daily-sync'
 MEAL_SLOTS='morning lunch dinner night'
 MEAL_LABELS=''
 for slot in $MEAL_SLOTS; do MEAL_LABELS="$MEAL_LABELS com.lifeos.meal-$slot"; done
-ALL_LABELS="$LABEL_BOT $LABEL_AM $LABEL_PM $LABEL_SYNC$MEAL_LABELS"
+LABEL_VCOPY='com.lifeos.voice-copy'
+LABEL_VOICE='com.lifeos.voice'
+# 和 scripts/voice-memos.mjs 里的路径保持一致
+VOICE_SRC="$HOME/Library/Group Containers/group.com.apple.VoiceMemos.shared/Recordings"
+VOICE_MIRROR="$HOME/Projects/life-os-voice/.mirror"
+ALL_LABELS="$LABEL_BOT $LABEL_AM $LABEL_PM $LABEL_SYNC$MEAL_LABELS $LABEL_VCOPY $LABEL_VOICE"
 
 xml_escape() { printf '%s' "$1" | sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g'; }
 
@@ -115,9 +125,9 @@ parse_time() {
 RUN_PATH="$(dirname "$NODE"):$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
 
 write_plist() {
-  # write_plist <label> <log名> <schedule-xml> <keepalive 0/1> <脚本及参数...>
+  # write_plist <label> <log名> <schedule-xml> <keepalive 0/1> <程序> <参数...>
   local label="$1" log="$2" schedule="$3" keepalive="$4"; shift 4
-  local args="    <string>$(xml_escape "$NODE")</string>"$'\n'
+  local args=''
   for a in "$@"; do args+="    <string>$(xml_escape "$a")</string>"$'\n'; done
   local keep=''
   if [ "$keepalive" = 1 ]; then
@@ -158,6 +168,13 @@ calendar() {
   <dict><key>Hour</key><integer>$h</integer><key>Minute</key><integer>$m</integer></dict>"
 }
 
+watch_every() {
+  # 目录有变化就跑，另外每隔 N 秒兜底跑一次（睡眠唤醒后、上次失败后重试）
+  echo "  <key>WatchPaths</key>
+  <array><string>$(xml_escape "$1")</string></array>
+  <key>StartInterval</key><integer>$2</integer>"
+}
+
 # 先校验时间，避免装到一半才报错（在当前 shell 里调用，格式不对会直接 exit）
 parse_time "$MORNING" >/dev/null; parse_time "$EVENING" >/dev/null; parse_time "$SYNC_AT" >/dev/null
 IFS=',' read -r -a MEAL_TIMES <<<"$MEALS"
@@ -166,7 +183,10 @@ for t in "${MEAL_TIMES[@]}"; do parse_time "$t" >/dev/null; done
 
 if [ "$WITH_BOT" = 1 ] && [ -f "$PROJ/scripts/.bot.lock" ]; then
   pid="$(tr -dc '0-9' < "$PROJ/scripts/.bot.lock")"
-  if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
+  managed="$(launchctl print "$DOMAIN/$LABEL_BOT" 2>/dev/null | awk '$1 == "pid" && $2 == "=" {print $3; exit}' || true)"
+  parent="$(ps -o ppid= -p "${pid:-0}" 2>/dev/null | tr -d ' ' || true)"
+  # 锁在常驻任务手里（重装时会先卸掉它）就没问题；拦的是手动 npm run bot
+  if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null && [ "$pid" != "$managed" ] && [ "$parent" != "$managed" ]; then
     echo "✗ 已经有一个大仙在跑（pid $pid，多半是手动 npm run bot）。先结束它（kill $pid），再装常驻任务。"
     exit 1
   fi
@@ -179,28 +199,41 @@ if [ "$WITH_MEALS" = 1 ]; then
   i=0
   for slot in $MEAL_SLOTS; do
     t="${MEAL_TIMES[$i]}"; i=$((i + 1))
-    write_plist "com.lifeos.meal-$slot" meal "$(calendar "$t")" 0 scripts/meal-reminder.mjs --slot "$slot"
+    write_plist "com.lifeos.meal-$slot" meal "$(calendar "$t")" 0 "$NODE" scripts/meal-reminder.mjs --slot "$slot"
     echo "✅ 已注册：com.lifeos.meal-$slot  每天 ${t}（吃饭提醒）"
   done
 else
   echo "⏸ 吃饭提醒：未安装（--no-meals）"
 fi
 if [ "$WITH_BRIEF" = 1 ]; then
-  write_plist "$LABEL_AM" brief "$(calendar "$MORNING")" 0 scripts/daily-brief.mjs --morning
+  write_plist "$LABEL_AM" brief "$(calendar "$MORNING")" 0 "$NODE" scripts/daily-brief.mjs --morning
   echo "✅ 已注册：$LABEL_AM  每天 ${MORNING}（早间简报）"
-  write_plist "$LABEL_PM" brief "$(calendar "$EVENING")" 0 scripts/daily-brief.mjs --evening
+  write_plist "$LABEL_PM" brief "$(calendar "$EVENING")" 0 "$NODE" scripts/daily-brief.mjs --evening
   echo "✅ 已注册：$LABEL_PM  每天 ${EVENING}（晚间收工三问）"
 else
   echo "⏸ 早晚简报：已暂停（--no-brief）"
 fi
 if [ "$WITH_SYNC" = 1 ]; then
-  write_plist "$LABEL_SYNC" sync "$(calendar "$SYNC_AT")" 0 scripts/sync-project-progress.mjs
+  write_plist "$LABEL_SYNC" sync "$(calendar "$SYNC_AT")" 0 "$NODE" scripts/sync-project-progress.mjs
   echo "✅ 已注册：$LABEL_SYNC  每天 ${SYNC_AT}（项目进度同步）"
 else
   echo "⏸ 每晚项目同步：已暂停（--no-sync）"
 fi
+if [ "$WITH_VOICE" = 1 ]; then
+  mkdir -p "$VOICE_MIRROR"
+  write_plist "$LABEL_VCOPY" voice "$(watch_every "$VOICE_SRC" 300)" 0 /usr/bin/rsync -a "$VOICE_SRC/" "$VOICE_MIRROR/"
+  write_plist "$LABEL_VOICE" voice "$(watch_every "$VOICE_MIRROR" 900)" 0 "$NODE" scripts/voice-memos.mjs
+  echo "✅ 已注册：$LABEL_VCOPY + $LABEL_VOICE（手表录音整理）"
+  command -v whisper-cli >/dev/null || echo '  ⚠ 还没装转写工具：brew install whisper-cpp（模型下载见 CLAUDE.md「手表录音」）'
+  if [ ! -r "$VOICE_SRC" ]; then
+    echo '  ⚠ 还差一步：系统设置 → 隐私与安全性 → 完全磁盘访问权限 → 点「+」→ 按 ⌘⇧G 输入 /usr/bin/rsync → 打开它的开关'
+    echo '    （语音备忘录文件夹受系统保护，只给 rsync 这一个程序开读权限）'
+  fi
+else
+  echo "⏸ 手表录音整理：未安装（--no-voice）"
+fi
 if [ "$WITH_BOT" = 1 ]; then
-  write_plist "$LABEL_BOT" bot '' 1 scripts/bot-forever.mjs
+  write_plist "$LABEL_BOT" bot '' 1 "$NODE" scripts/bot-forever.mjs
   echo "✅ 已注册：$LABEL_BOT  登录即启动，异常退出自动拉起"
 fi
 
