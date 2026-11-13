@@ -1,6 +1,6 @@
 // 健康塑形页的纯计算：汇总当天摄入、估算能量收支、判断达标、整理一周与体重趋势。
 // 不碰数据库，方便单测（shapeCalc.test.mjs）。
-import { SHAPE_PLAN } from './shapePlan.js'
+import { SHAPE_PLAN, targetsFor } from './shapePlan.js'
 
 const num = v => (v == null || v === '' || Number.isNaN(Number(v)) ? 0 : Number(v))
 const round = (v, d = 0) => Math.round(v * 10 ** d) / 10 ** d
@@ -60,14 +60,15 @@ export function energyBalance({ food, workouts, daily, weightKg, profile = SHAPE
   return { intake, base, activity, activitySource: watch ? 'watch' : 'estimate', deficit: round(base + activity - intake) }
 }
 
-// 当天各项是否达标。没有记录的项为 null（显示「未记录」），不算失败
+// 当天各项是否达标。没有记录的项为 null（显示「未记录」），不算失败。
+// 碳水是区间：超了不行，低于下限（又滑回低碳）也不算达标；生酮期的旧日子下限是 0
 export function dayChecks({ food, workouts, daily, targets = SHAPE_PLAN.daily }) {
   const t = sumFood(food)
   const logged = food.length > 0
   return {
     kcal: logged ? t.kcal <= targets.kcal + 100 : null,
     protein: logged ? t.protein >= targets.protein : null,
-    netCarb: logged ? t.netCarb <= targets.netCarb : null,
+    netCarb: logged ? t.netCarb <= targets.netCarb && t.netCarb >= (targets.netCarbMin || 0) : null,
     fat: logged ? t.fat <= targets.fat : null,
     satFat: t.satFat != null ? t.satFat <= targets.satFat : null,
     steps: daily?.steps != null ? num(daily.steps) >= targets.steps : null,
@@ -90,7 +91,7 @@ export function weekSummary({ day, foodRows, workoutRows, dailyRows }) {
   const daily = new Map(dailyRows.map(r => [r.log_date, r]))
   const days = weekOf(day).map(d => {
     const f = food.get(d) || [], w = work.get(d) || [], dl = daily.get(d)
-    return { day: d, totals: sumFood(f), checks: dayChecks({ food: f, workouts: w, daily: dl }), weight: dl?.weight_kg ?? null, steps: dl?.steps ?? null, logged: f.length > 0 || w.length > 0 || !!dl }
+    return { day: d, totals: sumFood(f), checks: dayChecks({ food: f, workouts: w, daily: dl, targets: targetsFor(d) }), weight: dl?.weight_kg ?? null, steps: dl?.steps ?? null, logged: f.length > 0 || w.length > 0 || !!dl }
   })
   const weights = days.map(d => d.weight).filter(v => v != null).map(Number)
   return {

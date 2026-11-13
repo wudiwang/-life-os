@@ -8,12 +8,14 @@ test('pictures follow the order foods are mentioned, max 3, CP chicken shows onl
   assert.deepEqual(imagesFor('CP 打抛嫩鸡胸 2 袋（160g）、鸡蛋 2 个（7-11）、7-11 蔬菜沙拉 1 盒', 5), ['cp', 'egg', 'salad'])
   assert.deepEqual(imagesFor('挪威青花鱼片 1 片 165g（空气炸锅）'), ['mackerel'])
   assert.deepEqual(imagesFor('混合坚果 20g、水煮蛋 2 个、牛油果果肉 100g'), ['almond', 'egg', 'avocado'])
+  assert.deepEqual(imagesFor('蛋白粉 1 勺、夏威夷果 20g'), ['whey', 'macadamia'])
   assert.deepEqual(imagesFor('空气炸锅牛排 300g + 西兰花'), ['beefLean', 'broccoli'])
+  assert.deepEqual(imagesFor('糙米饭 1 小碗（150g）、蒸红薯 250g、香蕉 1 根'), ['rice', 'sweetPotato', 'banana'])
   assert.deepEqual(imagesFor('不认识的东西'), [])
 })
 
 test('every picture key the matcher can return has an image file registered', () => {
-  const all = ['cp', 'friedChicken', 'coffee', 'salad', 'egg', 'avocado', 'mackerel', 'almond', 'beefLean', 'broccoli', 'choySum', 'shrimp', 'salmon', 'seabass', 'chickenBreast', 'tofu', 'greekYogurt']
+  const all = ['cp', 'friedChicken', 'coffee', 'salad', 'egg', 'avocado', 'mackerel', 'almond', 'beefLean', 'broccoli', 'choySum', 'shrimp', 'salmon', 'seabass', 'chickenBreast', 'tofu', 'greekYogurt', 'rice', 'oats', 'sweetPotato', 'chickpea', 'edamame', 'banana', 'guava', 'whey', 'macadamia']
   for (const k of all) {
     assert.ok(HAS_IMG.has(k), `${k} 没有图片`)
     assert.ok(imageName(k), `${k} 没有名字`)

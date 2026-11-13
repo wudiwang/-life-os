@@ -31,6 +31,15 @@ export const RECIPE_CREDITS = [
   {key: "friedChicken",title: "Fried-Chicken-Set",author: "Evan-Amos",license: "CC0",licenseUrl: "http://creativecommons.org/publicdomain/zero/1.0/deed.en",sourceUrl: "https://commons.wikimedia.org/wiki/File:Fried-Chicken-Set.jpg"},
   {key: "coffee",title: "Cup of black coffee",author: "ସୁଭ ପା/Subhashish Panigrahi",license: "CC BY-SA 3.0",licenseUrl: "https://creativecommons.org/licenses/by-sa/3.0",sourceUrl: "https://commons.wikimedia.org/wiki/File:Cup_of_black_coffee.jpg"},
   {key: "salad",title: "Fresh salad with arugula, cabbage and tomato in a glass bowl",author: "Horacio Cambeiro",license: "CC BY-SA 3.0",licenseUrl: "https://creativecommons.org/licenses/by-sa/3.0",sourceUrl: "https://commons.wikimedia.org/wiki/File:Fresh_salad_with_arugula,_cabbage_and_tomato_in_a_glass_bowl.jpg"},
+  {key: "rice",title: "Bowl of Cooked Brown Rice",author: "Ceeseven",license: "CC BY-SA 4.0",licenseUrl: "https://creativecommons.org/licenses/by-sa/4.0",sourceUrl: "https://commons.wikimedia.org/wiki/File:Bowl_of_Cooked_Brown_Rice.jpg"},
+  {key: "oats",title: "Rolled oats",author: "Hankwang",license: "Public domain",licenseUrl: "",sourceUrl: "https://commons.wikimedia.org/wiki/File:Rolled_oats.jpg"},
+  {key: "sweetPotato",title: "Ipomoea batatas - Tubers",author: "Filo gèn'",license: "CC BY-SA 4.0",licenseUrl: "https://creativecommons.org/licenses/by-sa/4.0",sourceUrl: "https://commons.wikimedia.org/wiki/File:Ipomoea_batatas_-_Tubers.jpg"},
+  {key: "chickpea",title: "Chickpeas - The Coconut Island 2025-10-05",author: "Andy Li",license: "CC0",licenseUrl: "http://creativecommons.org/publicdomain/zero/1.0/deed.en",sourceUrl: "https://commons.wikimedia.org/wiki/File:Chickpeas_-_The_Coconut_Island_2025-10-05.jpg"},
+  {key: "edamame",title: "Shelled edamame beans",author: "Fumikas Sagisavas",license: "CC0",licenseUrl: "http://creativecommons.org/publicdomain/zero/1.0/deed.en",sourceUrl: "https://commons.wikimedia.org/wiki/File:Shelled_edamame_beans.jpg"},
+  {key: "banana",title: "Bunch of bananas on sale",author: "Wilfredor",license: "CC0",licenseUrl: "http://creativecommons.org/publicdomain/zero/1.0/deed.en",sourceUrl: "https://commons.wikimedia.org/wiki/File:Bunch_of_bananas_on_sale.jpg"},
+  {key: "guava",title: "Guava ID",author: "Sakurai Midori",license: "CC BY-SA 3.0",licenseUrl: "http://creativecommons.org/licenses/by-sa/3.0/",sourceUrl: "https://commons.wikimedia.org/wiki/File:Guava_ID.jpg"},
+  {key: "whey",title: "Whey Protein Scoop (49935767168)",author: "Ajay Suresh from New York, NY, USA",license: "CC BY 2.0",licenseUrl: "https://creativecommons.org/licenses/by/2.0",sourceUrl: "https://commons.wikimedia.org/wiki/File:Whey_Protein_Scoop_(49935767168).jpg"},
+  {key: "macadamia",title: "Macadamia nut kernels",author: "Fumikas Sagisavas",license: "CC0",licenseUrl: "https://creativecommons.org/publicdomain/zero/1.0/deed.en",sourceUrl: "https://commons.wikimedia.org/wiki/File:Macadamia_nut_kernels.jpg"},
 ]
 
 // 有图的食物（首页建议、食谱页共用）

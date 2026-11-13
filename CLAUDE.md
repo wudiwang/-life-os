@@ -22,17 +22,18 @@ git push origin main → Vercel 自动构建发布（约1-2分钟）
 ## 当前主线：健康塑形（2026-11-03 起，先试一周）
 
 - 侧栏只常驻 `constants.PRIMARY_NAV`（现为 `['shape', 'recipe']`），其余 16 个模块折叠在「更多模块」里，功能和数据都在，只是不打扰。要恢复某个模块常驻，把它的 key 加进 `PRIMARY_NAV`。默认首页也是 `shape`（useUIStore / App.jsx 兜底）。
+- **2026-11-13 起不再生酮**：改成均衡低脂的减脂吃法，一天两顿（约 12:00–20:00），每顿一份蛋白 + 一份主食 + 一大份菜。每日目标：约 1,900 kcal（不低于 1,600）、蛋白 ≥ 130g、碳水 80–130g（有下限，低了也不算达标）、脂肪 60–90g、饱和脂肪 ≤ 15g、肉和鱼一天合计约 250g（`fleshMax`，其余蛋白用蛋、豆腐、酸奶、蛋白粉补；蛋白粉 11-13 起每天 2 勺、每顿 1 勺，数值在 `shapeRecipe.js` 的 `RECIPE_FOODS.whey`，先按一般乳清粉估；夏威夷果每天 20g）。有氧 11-13 起每天坡度走 ≥ 40 分钟、心率约 130（`shapePlan.weekly.aerobicMin = 280`）。不要再给生酮式的建议（断碳、多吃油、防弹咖啡）。11-13 之前是生酮期，回看那几天用 `shapePlan.targetsFor(day)` 取当时的目标，不拿新目标去打叉。旧的「一周食谱」模块（`MealPlan/` + `lib/ketoPlan.js`）是生酮版存档，折叠在「更多模块」里，不再维护。
 - 页面 `Shape/ShapePage` **只做呈现**；纯计算在 `Shape/shapeCalc.js`（`npm run test:shape`），目标数字在 `Shape/shapePlan.js`，与 `docs/健康塑形计划.md` 同步修改。
 - 数据表 `shape_food_logs` / `shape_workouts` / `shape_daily`（`supabase/v18_shape.sql`；v19 给饮食表加了 `sodium_mg / potassium_mg / magnesium_mg`）。**录入只走聊天**：大仙按 `docs/塑形数据录入总则.md` 估算热量、运动消耗并写库，再写当天 `shape_daily.coach_note`。
-- **大仙吃饭提醒（2026-11-08 起唯一的定时任务）**：`scripts/meal-reminder.mjs`（文案纯函数 `meal-reminder-core.mjs`，和首页同一套 shapeSuggest 算法，不经过 AI），launchd 每天 09:30 / 13:00 / 18:30 / 21:30 推 TG：今天吃了多少、还差多少、二选一吃法、这个时段该吃的补剂。用户要求其他定时任务全部暂停：Mac 上按 `bash scripts/install-launchd.sh --no-brief --no-sync` 安装（大仙常驻 + 吃饭提醒 + 手表录音整理）；要恢复早晚简报 / 每晚同步，去掉对应的 `--no-xxx` 重装即可。手动试跑：`npm run remind -- --slot dinner --dry`。
+- **大仙吃饭提醒（2026-11-08 起唯一的定时任务）**：`scripts/meal-reminder.mjs`（文案纯函数 `meal-reminder-core.mjs`，和首页同一套 shapeSuggest 算法，不经过 AI），由 GitHub Actions（`.github/workflows/meal-reminder.yml`）定时推 TG。**2026-11-12 起一天两顿**（进食窗口约 12:00–20:00），每天 3 条：11:45 第一顿 / 18:15 第二顿 / 19:45 窗口快关了（时段 key：`first / second / close`）——今天吃了多少、还差多少、二选一吃法、这个时段该吃的补剂。用户要求其他定时任务全部暂停：Mac 上按 `bash scripts/install-launchd.sh --no-brief --no-sync` 安装（大仙常驻 + 吃饭提醒 + 手表录音整理）；要恢复早晚简报 / 每晚同步，去掉对应的 `--no-xxx` 重装即可。手动试跑：`npm run remind -- --slot second --dry`。
 - 大仙收照片：`tg-bot.mjs` 下载到 `scripts/.tg-photos/`（gitignore），相册合并成一次（`tg-photo.mjs`），把本机路径交给本机大脑用 Read 看图。
 
 ## 模块地图（src/pages/ + registry.js 登记）
 
 | 页面 | 文件 | 说明 |
 |---|---|---|
-| 食谱 | Shape/RecipePage | 塑形的一日基线 / 一周食谱 / 蛋白替换（1 份 = 18g = 1 袋 CP）/ 问答（脂肪、蛋白、电解质、喝水）。数据与计算在 `Shape/shapeRecipe.js`，`shapeRecipe.test.mjs` 校验每天都达到 shapePlan 的目标；图片在 `public/recipe/`，来源登记在 `Shape/recipeCredits.js` |
-| 健康塑形 | Shape/ShapePage | 当前常驻模块（和食谱一起），也是打开网站的首页。版式要少字：顶部只有蛋白、热量两个大数字 + 二选一的补法（算法在 `Shape/shapeSuggest.js`）；「今天吃了」每顿一张拼图卡（按 items 文字自动配图、按时间编「第一顿…」，在 `Shape/mealImages.js`）；教练点评、能量缺口、计划要点收在最下面「更多」里。今日四项（热量/蛋白/净碳/步数）达标、能量缺口估算、教练点评、饮食与训练明细、本周 7 天表、体重 7 日均趋势 |
+| 食谱 | Shape/RecipePage | 塑形的两顿基线 / 一周食谱（每天两顿，每顿带主食）/ 蛋白替换（1 份 = 18g = 1 袋 CP，分「不限」和「肉鱼」两类）/ 问答（主食、蛋白、脂肪、电解质、喝水）。数据与计算在 `Shape/shapeRecipe.js`，`shapeRecipe.test.mjs` 校验每天都达到 shapePlan 的目标（含碳水区间、肉鱼克数上限）；图片在 `public/recipe/`，来源登记在 `Shape/recipeCredits.js` |
+| 健康塑形 | Shape/ShapePage | 当前常驻模块（和食谱一起），也是打开网站的首页。版式要少字：顶部只有蛋白、热量、碳水三个大数字（下面一行小字是脂肪、饱和脂肪、肉和鱼的额度）+ 二选一的补法（算法在 `Shape/shapeSuggest.js`：先补蛋白，肉鱼额度用完就给豆腐 / 酸奶 / 蛋白粉；今天的 2 勺蛋白粉还没喝满（`wheyScoopsEaten` 从 items 里认「蛋白粉 1 勺」）时，主蛋白之外还差的先用 1 勺补，喝满了才用豆腐；碳水不到下限就配主食；热量不到底线再加菜、橄榄油、水果，今天还没吃坚果（`ateNuts`）就把夏威夷果 20g 放进来）；「今天吃了」每顿一张拼图卡（按 items 文字自动配图、按时间编「第一顿…」，在 `Shape/mealImages.js`）；教练点评、能量缺口、计划要点收在最下面「更多」里。今日四项（热量/蛋白/碳水/步数）达标、能量缺口估算、教练点评、饮食与训练明细、本周 7 天表、体重 7 日均趋势 |
 | 人生看板 | Dashboard/DailyBoard（三大主线卡片）；「生活概览」是 Dashboard/DashboardPage | **核心原则 + 每日落实**(PrincipleCard，principle_logs) + **本周行为契约**(WeeklyActionsCard) + **每日三向**(DailyFocusCard，daily_focus) + 今日概览 + 人生阶段面板(life_stage) + 检查点提醒 |
 | 人生 OKR | OKR/OKRPage | 年度/季度 Objective(okr_objectives) + 拆出的每周行为契约(weekly_actions)。**结果指标只在回顾时看，每日只考核动作做没做**——个人自定 KPI 裁判即运动员，用结果指标每天自评必然放水或弃疗 |
 | 每日一记 | Journal/JournalPage | 快记(AI 提炼后确认入库) + **启示条**(InsightBar，insights 表) + **主线面板**(ThreadsPanel，journal_threads 表) + 心情(1-5)/感恩/心情曲线 + 按天折叠的笔记流 |

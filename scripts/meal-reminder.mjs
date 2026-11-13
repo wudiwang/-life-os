@@ -1,8 +1,8 @@
 // 大仙的吃饭提醒：读今天（和昨天）的 shape_food_logs，按时段生成提醒，推送到 TG。
 // 用法：
-//   node scripts/meal-reminder.mjs --slot dinner        推送晚饭提醒（morning / lunch / dinner / night）
+//   node scripts/meal-reminder.mjs --slot second        推送第二顿提醒（first / second / close，一天两顿）
 //   node scripts/meal-reminder.mjs --dry                不推送，只打印（不写 --slot 就按当前曼谷时间猜）
-// 定时由 scripts/install-launchd.sh 注册（默认 09:30 / 13:00 / 18:30 / 21:30）。文案在 meal-reminder-core.mjs。
+// 定时在 .github/workflows/meal-reminder.yml（Mac 上也可用 scripts/install-launchd.sh，默认 11:45 / 18:15 / 19:45）。文案在 meal-reminder-core.mjs。
 import { existsSync, readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
@@ -28,7 +28,7 @@ const today = now.toLocaleDateString('sv-SE', { timeZone: 'Asia/Bangkok' })
 const hhmm = now.toLocaleTimeString('en-GB', { timeZone: 'Asia/Bangkok', hour: '2-digit', minute: '2-digit', hour12: false })
 const weekday = ((new Date(`${today}T12:00:00Z`).getUTCDay() + 6) % 7) + 1 // 1=周一
 const slot = arg('--slot') || slotFor(hhmm)
-if (!SLOTS[slot]) { console.error(`未知时段：${slot}（morning / lunch / dinner / night）`); process.exit(1) }
+if (!SLOTS[slot]) { console.error(`未知时段：${slot}（${Object.keys(SLOTS).join(' / ')}）`); process.exit(1) }
 
 const SB = env.VITE_SUPABASE_URL, KEY = env.VITE_SUPABASE_ANON_KEY
 if (!SB || !KEY) { console.error('缺少 VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY'); process.exit(1) }

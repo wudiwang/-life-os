@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { addDays, weekOf, sumFood, aerobicMinutes, bmr, weightOn, energyBalance, dayChecks, weekSummary, weightTrend, planDay } from './shapeCalc.js'
+import { targetsFor } from './shapePlan.js'
 
 const profile = { heightCm: 180, age: 35, sex: 'male' }
 
@@ -65,10 +66,17 @@ test('energy balance prefers watch active energy and never double counts workout
 test('day checks treat missing data as not recorded rather than failed', () => {
   const none = dayChecks({ food: [], workouts: [], daily: null })
   assert.deepEqual(none, { kcal: null, protein: null, netCarb: null, fat: null, satFat: null, steps: null, trained: false })
-  const ok = dayChecks({ food: [{ kcal: 1980, protein_g: 152, fat_g: 118, sat_fat_g: 19, net_carb_g: 22 }], workouts: [{ kind: 'strength' }], daily: { steps: 8100 } })
+  const ok = dayChecks({ food: [{ kcal: 1980, protein_g: 136, fat_g: 68, sat_fat_g: 14, net_carb_g: 118 }], workouts: [{ kind: 'strength' }], daily: { steps: 8100 } })
   assert.deepEqual(ok, { kcal: true, protein: true, netCarb: true, fat: true, satFat: true, steps: true, trained: true })
-  const bad = dayChecks({ food: [{ kcal: 2100, protein_g: 120, fat_g: 150, sat_fat_g: 35, net_carb_g: 45 }], workouts: [{ kind: 'walk' }], daily: { steps: 3000 } })
+  const bad = dayChecks({ food: [{ kcal: 2100, protein_g: 120, fat_g: 150, sat_fat_g: 35, net_carb_g: 145 }], workouts: [{ kind: 'walk' }], daily: { steps: 3000 } })
   assert.deepEqual(bad, { kcal: false, protein: false, netCarb: false, fat: false, satFat: false, steps: false, trained: false })
+  // 碳水是区间：吃得太少（滑回低碳）也不算达标
+  const lowCarb = [{ kcal: 1700, protein_g: 140, fat_g: 80, sat_fat_g: 14, net_carb_g: 22 }]
+  assert.equal(dayChecks({ food: lowCarb, workouts: [], daily: null }).netCarb, false)
+  // 生酮期的旧日子按当时的目标：碳水 ≤ 30 才算达标，蛋白要 150
+  const keto = dayChecks({ food: lowCarb, workouts: [], daily: null, targets: targetsFor('2026-11-08') })
+  assert.equal(keto.netCarb, true)
+  assert.equal(keto.protein, false)
   // 老记录没估饱和脂肪：显示「未记录」而不是达标
   assert.equal(dayChecks({ food: [{ kcal: 1800, fat_g: 100 }], workouts: [], daily: null }).satFat, null)
 })
@@ -98,4 +106,21 @@ test('weight trend starts at the first weigh-in and smooths with a 7-day average
   assert.equal(t[2].avg, 89.5)
   assert.equal(t[3].avg, 89.2)
   assert.deepEqual(weightTrend([], '2026-11-07'), [])
+})
+
+test('week summary judges each day by the targets in force that day (keto until 2026-11-12, balanced from 11-13)', () => {
+  const s = weekSummary({
+    day: '2026-11-13',
+    foodRows: [
+      { log_date: '2026-11-12', kcal: 1500, protein_g: 135, net_carb_g: 20 }, // 生酮期：蛋白要 150，碳水 ≤ 30
+      { log_date: '2026-11-13', kcal: 1700, protein_g: 135, net_carb_g: 20 }, // 新目标：蛋白 130，碳水 80–130
+      { log_date: '2026-11-14', kcal: 1700, protein_g: 135, net_carb_g: 110 },
+    ],
+    workoutRows: [], dailyRows: [],
+  })
+  const by = Object.fromEntries(s.days.map(d => [d.day, d.checks]))
+  assert.deepEqual([by['2026-11-12'].protein, by['2026-11-12'].netCarb], [false, true])
+  assert.deepEqual([by['2026-11-13'].protein, by['2026-11-13'].netCarb], [true, false])
+  assert.deepEqual([by['2026-11-14'].protein, by['2026-11-14'].netCarb], [true, true])
+  assert.equal(s.proteinDays, 2)
 })

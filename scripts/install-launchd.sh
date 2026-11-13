@@ -6,7 +6,8 @@
 # 用法：
 #   bash scripts/install-launchd.sh                      # 全部安装：大仙常驻 + 吃饭提醒 + 手表录音整理 + 早晚简报 + 每晚项目同步
 #   bash scripts/install-launchd.sh --no-brief --no-sync # 现行配置：大仙 + 吃饭提醒 + 手表录音整理
-#   bash scripts/install-launchd.sh --meals 09:30,13:00,18:30,21:30   # 吃饭提醒的 4 个时间（早/午/晚/睡前）
+#   bash scripts/install-launchd.sh --meals 11:45,18:15,19:45   # 吃饭提醒的 3 个时间（第一顿/第二顿/窗口快关了）
+#   （吃饭提醒平时由 GitHub Actions 推送，见 .github/workflows/meal-reminder.yml；Mac 上再装会重复推，一般带 --no-meals）
 #   bash scripts/install-launchd.sh --morning 08:00 --evening 22:00 --sync-at 21:30
 #   bash scripts/install-launchd.sh --no-bot             # 只装定时任务，不装大仙常驻
 #   bash scripts/install-launchd.sh --no-meals           # 不装吃饭提醒
@@ -29,7 +30,7 @@ set -euo pipefail
 MORNING='08:30'
 EVENING='21:30'
 SYNC_AT='22:07'
-MEALS='09:30,13:00,18:30,21:30'
+MEALS='11:45,18:15,19:45'
 WITH_BOT=1
 WITH_BRIEF=1
 WITH_SYNC=1
@@ -64,9 +65,10 @@ LABEL_BOT='com.lifeos.bot'
 LABEL_AM='com.lifeos.brief-morning'
 LABEL_PM='com.lifeos.brief-evening'
 LABEL_SYNC='com.lifeos.daily-sync'
-MEAL_SLOTS='morning lunch dinner night'
+MEAL_SLOTS='first second close'
 MEAL_LABELS=''
-for slot in $MEAL_SLOTS; do MEAL_LABELS="$MEAL_LABELS com.lifeos.meal-$slot"; done
+# 旧的四顿时段（2026-11-12 前）也列进来，重装 / 卸载时一并清掉
+for slot in $MEAL_SLOTS morning lunch dinner night; do MEAL_LABELS="$MEAL_LABELS com.lifeos.meal-$slot"; done
 LABEL_VCOPY='com.lifeos.voice-copy'
 LABEL_VOICE='com.lifeos.voice'
 # 和 scripts/voice-memos.mjs 里的路径保持一致
@@ -178,7 +180,7 @@ watch_every() {
 # 先校验时间，避免装到一半才报错（在当前 shell 里调用，格式不对会直接 exit）
 parse_time "$MORNING" >/dev/null; parse_time "$EVENING" >/dev/null; parse_time "$SYNC_AT" >/dev/null
 IFS=',' read -r -a MEAL_TIMES <<<"$MEALS"
-if [ "${#MEAL_TIMES[@]}" -ne 4 ]; then echo "✗ --meals 要给 4 个时间（早,午,晚,睡前），现在是：$MEALS"; exit 1; fi
+if [ "${#MEAL_TIMES[@]}" -ne 3 ]; then echo "✗ --meals 要给 3 个时间（第一顿,第二顿,窗口快关了），现在是：$MEALS"; exit 1; fi
 for t in "${MEAL_TIMES[@]}"; do parse_time "$t" >/dev/null; done
 
 if [ "$WITH_BOT" = 1 ] && [ -f "$PROJ/scripts/.bot.lock" ]; then
@@ -240,5 +242,5 @@ fi
 echo
 echo "日志目录：$LOGS"
 echo '查看状态：bash scripts/install-launchd.sh --status'
-echo "立即试跑：launchctl kickstart $DOMAIN/com.lifeos.meal-dinner"
+echo "立即试跑：launchctl kickstart $DOMAIN/com.lifeos.meal-second"
 echo '提醒：合盖或睡眠时大仙离线、简报会延后到唤醒后补推。'
